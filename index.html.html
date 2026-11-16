@@ -1,0 +1,3013 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>IronPulse — Commercial Gym & Squad Progression Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Firebase Compat SDKs (Works standalone on GitHub Pages with zero build tools) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          colors: {
+            zinc: { 850: '#1c1c21', 950: '#09090b' }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body {
+      background-color: #09090b;
+      color: #fafafa;
+      font-family: 'Inter', system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+    /* Custom subtle scrollbars */
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #121215; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 9999px; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.22); }
+      50% { box-shadow: 0 0 34px rgba(245, 158, 11, 0.42); }
+    }
+    .rank-glow { animation: pulseGlow 3s infinite ease-in-out; }
+    @keyframes popIn {
+      0% { transform: scale(0.88); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .pop-in { animation: popIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  </style>
+</head>
+<body class="min-h-screen pb-24 selection:bg-orange-500/30 selection:text-orange-200">
+
+  <!-- TOP HEADER BAR -->
+  <header class="sticky top-0 z-30 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/80 px-4 py-3">
+    <div class="max-w-2xl mx-auto flex items-center justify-between gap-2">
+      <div class="flex items-center gap-2.5">
+        <button onclick="openAvatarPickerModal()" title="Change Animal Avatar" id="headerAvatarBtn" class="w-10 h-10 rounded-xl bg-zinc-900 border border-orange-500/40 flex items-center justify-center shadow-lg shadow-orange-500/10 hover:scale-105 transition overflow-hidden shrink-0">
+          <!-- Injected by updateHeaderUI -->
+        </button>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="font-extrabold tracking-tight text-base text-white leading-none">IRON<span class="text-orange-500">PULSE</span></h1>
+            <span id="cloudStatusBadge" onclick="switchTab('squad')" class="cursor-pointer inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-900 text-zinc-400 border border-zinc-800">
+              <span class="w-1.5 h-1.5 rounded-full bg-zinc-500"></span> Local Mode
+            </span>
+          </div>
+          <p id="headerSubtitle" class="text-[11px] text-zinc-400 mt-0.5">Commercial Hypertrophy & Squad OS</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Quick Rank Pill -->
+        <button onclick="switchTab('ranks')" id="headerRankPill" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:border-orange-500/40 transition text-xs font-bold">
+          <span id="headerRankIcon">🔩</span>
+          <span id="headerXpText" class="text-orange-400">0 XP</span>
+        </button>
+        <!-- Settings Button -->
+        <button onclick="openSettingsModal()" aria-label="Settings" class="p-2 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ACTIVE WORKOUT FLOATING BANNER (when minimized or browsing other tabs) -->
+  <div id="activeWorkoutBanner" class="hidden sticky top-[65px] z-20 bg-gradient-to-r from-orange-600 to-amber-500 text-zinc-950 px-4 py-2.5 shadow-lg">
+    <div class="max-w-2xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="w-2.5 h-2.5 rounded-full bg-zinc-950 animate-ping"></span>
+        <div>
+          <p id="bannerWorkoutName" class="text-xs font-black uppercase tracking-wide">Active Session</p>
+          <p id="bannerWorkoutStats" class="text-[11px] font-semibold opacity-90">00:00 • 0 sets logged</p>
+        </div>
+      </div>
+      <button onclick="openActiveWorkoutModal()" class="px-3 py-1.5 rounded-lg bg-zinc-950 text-orange-400 text-xs font-extrabold shadow hover:bg-zinc-900 transition">
+        Resume
+      </button>
+    </div>
+  </div>
+
+  <!-- TOAST / NOTIFICATION BANNER -->
+  <div id="toastContainer" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md pointer-events-none flex flex-col gap-2"></div>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main id="appMain" class="max-w-2xl mx-auto px-4 pt-4 space-y-5"></main>
+
+  <!-- BOTTOM NAVIGATION BAR (6 TABS) -->
+  <nav class="fixed bottom-0 inset-x-0 z-30 bg-zinc-950/95 backdrop-blur-lg border-t border-zinc-800/90 px-1 py-1.5">
+    <div class="max-w-2xl mx-auto grid grid-cols-6 gap-0.5">
+      <button onclick="switchTab('home')" data-tab="home" class="nav-btn flex flex-col items-center justify-center py-1.5 rounded-xl text-orange-400 bg-zinc-900 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Home</span>
+      </button>
+      <button onclick="switchTab('workouts')" data-tab="workouts" class="nav-btn flex flex-col items-center justify-center py-1.5 rounded-xl text-zinc-400 hover:text-zinc-200 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6.5 6.5h11M6.5 17.5h11M4 9v6M20 9v6M9 6.5v11M15 6.5v11"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Workouts</span>
+      </button>
+      <button onclick="switchTab('squad')" data-tab="squad" class="nav-btn relative flex flex-col items-center justify-center py-1.5 rounded-xl text-zinc-400 hover:text-zinc-200 transition">
+        <span id="squadNavDot" class="hidden absolute top-1 right-3 w-2 h-2 rounded-full bg-orange-500"></span>
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Squad</span>
+      </button>
+      <button onclick="switchTab('ranks')" data-tab="ranks" class="nav-btn flex flex-col items-center justify-center py-1.5 rounded-xl text-zinc-400 hover:text-zinc-200 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Ranks</span>
+      </button>
+      <button onclick="switchTab('progress')" data-tab="progress" class="nav-btn flex flex-col items-center justify-center py-1.5 rounded-xl text-zinc-400 hover:text-zinc-200 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">Progress</span>
+      </button>
+      <button onclick="switchTab('history')" data-tab="history" class="nav-btn flex flex-col items-center justify-center py-1.5 rounded-xl text-zinc-400 hover:text-zinc-200 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        <span class="text-[10px] font-bold mt-0.5">History</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- DYNAMIC MODAL ROOT -->
+  <div id="modalRoot"></div>
+
+  <script>
+    /**
+     * ============================================================================
+     * 1. OPTIONAL HARDCODED FIREBASE CONFIG FOR GITHUB PAGES DEPLOYMENT
+     * ============================================================================
+     */
+    const DEFAULT_FIREBASE_CONFIG = {
+      apiKey: "",
+      authDomain: "",
+      projectId: "",
+      storageBucket: "",
+      messagingSenderId: "",
+      appId: ""
+    };
+
+    /**
+     * ============================================================================
+     * 1B. 16 CUTE ANIMAL GYM AVATARS (CUSTOM VECTOR SVG ILLUSTRATIONS)
+     * ============================================================================
+     */
+    const ANIMAL_AVATARS = [
+      { id: 'shiba', name: 'Buff Shiba', bg: 'from-orange-500/25 to-amber-600/25', ring: 'border-orange-500/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="32" cy="34" r="21" fill="#f59e0b"/><path d="M14 23 L17 8 L27 17 Z" fill="#d97706"/><path d="M50 23 L47 8 L37 17 Z" fill="#d97706"/><ellipse cx="32" cy="40" rx="15" ry="12" fill="#fef3c7"/><circle cx="24" cy="31" r="2.7" fill="#18181b"/><circle cx="40" cy="31" r="2.7" fill="#18181b"/><circle cx="23.2" cy="30" r="0.9" fill="#fff"/><circle cx="39.2" cy="30" r="0.9" fill="#fff"/><ellipse cx="32" cy="37" rx="3.5" ry="2.5" fill="#18181b"/><path d="M27 42 Q32 46 37 42" stroke="#18181b" stroke-width="2.2" fill="none" stroke-linecap="round"/><rect x="13" y="21" width="38" height="4.5" rx="2.2" fill="#ea580c"/><circle cx="19" cy="37" r="3" fill="#fb7185" opacity="0.55"/><circle cx="45" cy="37" r="3" fill="#fb7185" opacity="0.55"/></svg>` },
+      { id: 'panda', name: 'Swole Panda', bg: 'from-zinc-700/40 to-orange-500/20', ring: 'border-zinc-500/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="16" cy="18" r="7" fill="#18181b"/><circle cx="48" cy="18" r="7" fill="#18181b"/><circle cx="32" cy="35" r="21" fill="#fafafa"/><ellipse cx="23" cy="32" rx="5.5" ry="6.5" transform="rotate(-15 23 32)" fill="#18181b"/><ellipse cx="41" cy="32" rx="5.5" ry="6.5" transform="rotate(15 41 32)" fill="#18181b"/><circle cx="24" cy="31" r="2.2" fill="#fff"/><circle cx="40" cy="31" r="2.2" fill="#fff"/><ellipse cx="32" cy="39" rx="3.5" ry="2.4" fill="#18181b"/><path d="M28 44 Q32 47 36 44" stroke="#18181b" stroke-width="2.2" fill="none" stroke-linecap="round"/><rect x="13" y="21" width="38" height="4" rx="2" fill="#f97316"/></svg>` },
+      { id: 'capybara', name: 'Chad Capybara', bg: 'from-amber-700/30 to-orange-500/20', ring: 'border-amber-500/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="18" cy="19" r="5.5" fill="#78350f"/><circle cx="46" cy="19" r="5.5" fill="#78350f"/><rect x="13" y="18" width="38" height="34" rx="16" fill="#b45309"/><ellipse cx="32" cy="40" rx="13" ry="10" fill="#92400e"/><path d="M20 29 L26 30" stroke="#18181b" stroke-width="2.6" stroke-linecap="round"/><path d="M44 29 L38 30" stroke="#18181b" stroke-width="2.6" stroke-linecap="round"/><circle cx="27" cy="37" r="1.8" fill="#18181b"/><circle cx="37" cy="37" r="1.8" fill="#18181b"/><path d="M32 38 L32 43 M27 44 Q32 46 37 44" stroke="#18181b" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="32" cy="14" r="5" fill="#f97316"/><path d="M32 9 L34 6" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/></svg>` },
+      { id: 'grizzly', name: 'Gym Grizzly', bg: 'from-amber-800/35 to-orange-600/20', ring: 'border-amber-600/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="16" cy="18" r="6.5" fill="#78350f"/><circle cx="48" cy="18" r="6.5" fill="#78350f"/><circle cx="16" cy="18" r="3.2" fill="#d97706"/><circle cx="48" cy="18" r="3.2" fill="#d97706"/><circle cx="32" cy="35" r="21" fill="#92400e"/><ellipse cx="32" cy="41" rx="10" ry="8" fill="#fde68a"/><circle cx="24" cy="30" r="2.5" fill="#18181b"/><circle cx="40" cy="30" r="2.5" fill="#18181b"/><ellipse cx="32" cy="38" rx="4" ry="2.8" fill="#18181b"/><path d="M27 44 Q32 47 37 44" stroke="#18181b" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>` },
+      { id: 'tiger', name: 'Mighty Tiger', bg: 'from-orange-600/30 to-yellow-500/20', ring: 'border-orange-500/60', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="16" cy="18" r="6" fill="#ea580c"/><circle cx="48" cy="18" r="6" fill="#ea580c"/><circle cx="32" cy="35" r="21" fill="#f97316"/><path d="M32 15 L32 22 M26 17 L28 22 M38 17 L36 22" stroke="#18181b" stroke-width="2.4" stroke-linecap="round"/><path d="M13 32 L19 33 M51 32 L45 33" stroke="#18181b" stroke-width="2.4" stroke-linecap="round"/><ellipse cx="32" cy="41" rx="11" ry="8" fill="#fef3c7"/><circle cx="24" cy="31" r="2.6" fill="#18181b"/><circle cx="40" cy="31" r="2.6" fill="#18181b"/><polygon points="32,36 28.5,40 35.5,40" fill="#fb7185"/><path d="M28 43 Q32 46 36 43" stroke="#18181b" stroke-width="2" fill="none" stroke-linecap="round"/></svg>` },
+      { id: 'bunny', name: 'Barbell Bunny', bg: 'from-rose-500/20 to-orange-500/20', ring: 'border-rose-400/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><ellipse cx="23" cy="16" rx="5" ry="13" fill="#f4f4f5"/><ellipse cx="41" cy="16" rx="5" ry="13" fill="#f4f4f5"/><ellipse cx="23" cy="16" rx="2.5" ry="9" fill="#fda4af"/><ellipse cx="41" cy="16" rx="2.5" ry="9" fill="#fda4af"/><circle cx="32" cy="38" r="19" fill="#fafafa"/><circle cx="25" cy="34" r="2.5" fill="#18181b"/><circle cx="39" cy="34" r="2.5" fill="#18181b"/><polygon points="32,39 29,42 35,42" fill="#fb7185"/><path d="M28 45 Q32 48 36 45" stroke="#18181b" stroke-width="2" fill="none" stroke-linecap="round"/><rect x="15" y="25" width="34" height="4" rx="2" fill="#f97316"/></svg>` },
+      { id: 'fox', name: 'Iron Fox', bg: 'from-orange-500/30 to-red-500/20', ring: 'border-orange-400/60', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><polygon points="14,27 17,9 29,20" fill="#ea580c"/><polygon points="50,27 47,9 35,20" fill="#ea580c"/><circle cx="32" cy="36" r="20" fill="#f97316"/><path d="M13 36 Q22 34 32 43 Q42 34 51 36 Q47 54 32 55 Q17 54 13 36 Z" fill="#fafafa"/><circle cx="24" cy="32" r="2.5" fill="#18181b"/><circle cx="40" cy="32" r="2.5" fill="#18181b"/><circle cx="32" cy="41" r="3" fill="#18181b"/><path d="M28 45 Q32 48 36 45" stroke="#18181b" stroke-width="2" fill="none" stroke-linecap="round"/></svg>` },
+      { id: 'penguin', name: 'Power Penguin', bg: 'from-zinc-700/40 to-amber-500/20', ring: 'border-amber-400/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="32" cy="35" r="21" fill="#18181b"/><ellipse cx="26" cy="37" rx="9" ry="13" fill="#fafafa"/><ellipse cx="38" cy="37" rx="9" ry="13" fill="#fafafa"/><circle cx="24" cy="31" r="2.4" fill="#18181b"/><circle cx="40" cy="31" r="2.4" fill="#18181b"/><polygon points="32,35 27,40 37,40" fill="#f97316"/><rect x="14" y="21" width="36" height="4" rx="2" fill="#f59e0b"/></svg>` },
+      { id: 'koala', name: 'Kettlebell Koala', bg: 'from-zinc-600/35 to-orange-500/20', ring: 'border-zinc-400/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="14" cy="28" r="9" fill="#71717a"/><circle cx="50" cy="28" r="9" fill="#71717a"/><circle cx="14" cy="28" r="5" fill="#e4e4e7"/><circle cx="50" cy="28" r="5" fill="#e4e4e7"/><circle cx="32" cy="35" r="20" fill="#a1a1aa"/><circle cx="24" cy="32" r="2.4" fill="#18181b"/><circle cx="40" cy="32" r="2.4" fill="#18181b"/><ellipse cx="32" cy="38" rx="4.5" ry="6" fill="#27272a"/><path d="M28 46 Q32 49 36 46" stroke="#18181b" stroke-width="2" fill="none" stroke-linecap="round"/></svg>` },
+      { id: 'cat', name: 'Protein Cat', bg: 'from-amber-500/25 to-orange-500/25', ring: 'border-amber-400/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><polygon points="15,27 17,10 28,20" fill="#fbbf24"/><polygon points="49,27 47,10 36,20" fill="#fbbf24"/><circle cx="32" cy="36" r="20" fill="#fcd34d"/><circle cx="24" cy="33" r="2.6" fill="#18181b"/><circle cx="40" cy="33" r="2.6" fill="#18181b"/><polygon points="32,38 29,41 35,41" fill="#fb7185"/><path d="M26 43 Q29 46 32 43 Q35 46 38 43" stroke="#18181b" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M12 37 L20 38 M12 41 L20 40 M52 37 L44 38 M52 41 L44 40" stroke="#78350f" stroke-width="1.6" stroke-linecap="round"/></svg>` },
+      { id: 'duck', name: 'Dumbbell Duck', bg: 'from-yellow-500/25 to-orange-500/25', ring: 'border-yellow-400/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="32" cy="35" r="20" fill="#facc15"/><path d="M29 15 Q32 10 35 15" stroke="#eab308" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="24" cy="30" r="2.5" fill="#18181b"/><circle cx="40" cy="30" r="2.5" fill="#18181b"/><ellipse cx="32" cy="40" rx="9" ry="5.5" fill="#f97316"/><path d="M26 40 Q32 43 38 40" stroke="#7c2d12" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>` },
+      { id: 'wolf', name: 'Alpha Wolf', bg: 'from-zinc-700/45 to-orange-600/20', ring: 'border-orange-500/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><polygon points="15,27 17,9 28,20" fill="#3f3f46"/><polygon points="49,27 47,9 36,20" fill="#3f3f46"/><circle cx="32" cy="36" r="20" fill="#52525b"/><path d="M15 36 Q24 33 32 42 Q40 33 49 36 Q45 53 32 54 Q19 53 15 36 Z" fill="#e4e4e7"/><circle cx="24" cy="31" r="2.5" fill="#f97316"/><circle cx="40" cy="31" r="2.5" fill="#f97316"/><ellipse cx="32" cy="41" rx="3.5" ry="2.5" fill="#18181b"/><path d="M27 45 Q32 48 37 45" stroke="#18181b" stroke-width="2" fill="none" stroke-linecap="round"/></svg>` },
+      { id: 'hamster', name: 'Hercules Hamster', bg: 'from-orange-400/25 to-amber-500/25', ring: 'border-orange-400/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="17" cy="19" r="5.5" fill="#fb923c"/><circle cx="47" cy="19" r="5.5" fill="#fb923c"/><circle cx="32" cy="36" r="20" fill="#fdba74"/><ellipse cx="32" cy="42" rx="14" ry="10" fill="#fff7ed"/><circle cx="24" cy="31" r="2.6" fill="#18181b"/><circle cx="40" cy="31" r="2.6" fill="#18181b"/><circle cx="20" cy="38" r="3.5" fill="#fb7185" opacity="0.6"/><circle cx="44" cy="38" r="3.5" fill="#fb7185" opacity="0.6"/><polygon points="32,37 29.5,40 34.5,40" fill="#fb7185"/><path d="M28 43 Q32 46 36 43" stroke="#18181b" stroke-width="2" fill="none" stroke-linecap="round"/></svg>` },
+      { id: 'gorilla', name: 'Beast Gorilla', bg: 'from-zinc-800/60 to-orange-600/25', ring: 'border-orange-500/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="13" cy="33" r="5" fill="#27272a"/><circle cx="51" cy="33" r="5" fill="#27272a"/><circle cx="32" cy="34" r="21" fill="#27272a"/><ellipse cx="32" cy="38" rx="14" ry="12" fill="#52525b"/><path d="M20 27 Q32 30 44 27" stroke="#18181b" stroke-width="3" fill="none" stroke-linecap="round"/><circle cx="25" cy="32" r="2.3" fill="#fafafa"/><circle cx="39" cy="32" r="2.3" fill="#fafafa"/><circle cx="29" cy="39" r="1.6" fill="#18181b"/><circle cx="35" cy="39" r="1.6" fill="#18181b"/><path d="M26 45 Q32 43 38 45" stroke="#18181b" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>` },
+      { id: 'frog', name: 'Swole Frog', bg: 'from-lime-500/20 to-orange-500/20', ring: 'border-lime-400/50', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="21" cy="20" r="7.5" fill="#65a30d"/><circle cx="43" cy="20" r="7.5" fill="#65a30d"/><circle cx="21" cy="20" r="4" fill="#fafafa"/><circle cx="43" cy="20" r="4" fill="#fafafa"/><circle cx="21" cy="20" r="2" fill="#18181b"/><circle cx="43" cy="20" r="2" fill="#18181b"/><ellipse cx="32" cy="38" rx="21" ry="16" fill="#84cc16"/><path d="M21 40 Q32 48 43 40" stroke="#18181b" stroke-width="2.4" fill="none" stroke-linecap="round"/><circle cx="19" cy="37" r="2.8" fill="#fb7185" opacity="0.55"/><circle cx="45" cy="37" r="2.8" fill="#fb7185" opacity="0.55"/></svg>` },
+      { id: 'lion', name: 'Champion Lion', bg: 'from-amber-600/30 to-orange-600/30', ring: 'border-amber-400/60', svg: `<svg viewBox="0 0 64 64" class="w-full h-full"><circle cx="32" cy="34" r="24" fill="#b45309"/><circle cx="32" cy="35" r="17" fill="#fbbf24"/><circle cx="25" cy="32" r="2.5" fill="#18181b"/><circle cx="39" cy="32" r="2.5" fill="#18181b"/><polygon points="32,37 28.5,41 35.5,41" fill="#78350f"/><path d="M27 44 Q32 47 37 44" stroke="#78350f" stroke-width="2.2" fill="none" stroke-linecap="round"/></svg>` }
+    ];
+
+    function getAvatarObj(avatarId) {
+      return ANIMAL_AVATARS.find(a => a.id === avatarId) || ANIMAL_AVATARS[0];
+    }
+
+    function renderAvatarBadge(avatarId, sizeClasses = 'w-10 h-10') {
+      const av = getAvatarObj(avatarId);
+      return `<div class="${sizeClasses} rounded-2xl bg-gradient-to-br ${av.bg} border ${av.ring} p-1 flex items-center justify-center shrink-0 overflow-hidden">${av.svg}</div>`;
+    }
+
+    /**
+     * ============================================================================
+     * 2. EXPANDED EXERCISE LIBRARY (78 COMMERCIAL GYM MOVEMENTS)
+     * ============================================================================
+     */
+    const EXERCISE_DB = [
+      // Chest (13)
+      { id: 'ex_bench_flat', name: 'Barbell Flat Bench Press', muscle: 'Chest', equipment: 'Barbell', cue: 'Retract scapula, 45° elbow tuck, touch mid-chest.' },
+      { id: 'ex_bench_inc_db', name: 'Incline Dumbbell Press', muscle: 'Chest', equipment: 'Dumbbell', cue: '30° bench angle, deep stretch at bottom, press smoothly.' },
+      { id: 'ex_bench_inc_bb', name: 'Incline Barbell Bench Press', muscle: 'Chest', equipment: 'Barbell', cue: 'Touch upper chest just below collarbone, drive elbows up.' },
+      { id: 'ex_chest_press_mach', name: 'Seated Machine Chest Press', muscle: 'Chest', equipment: 'Machine', cue: 'Drive through palms, keep shoulders pinned back.' },
+      { id: 'ex_incline_mach_press', name: 'Plate-Loaded Incline Chest Press', muscle: 'Chest', equipment: 'Machine', cue: 'Converging handles — squeeze upper pecs hard at top.' },
+      { id: 'ex_cable_fly_high', name: 'High-to-Low Cable Crossover', muscle: 'Chest', equipment: 'Cable', cue: 'Squeeze lower pecs at midline for 1 second.' },
+      { id: 'ex_cable_fly_low', name: 'Low-to-High Cable Fly', muscle: 'Chest', equipment: 'Cable', cue: 'Scoop cables upward toward upper chest midline.' },
+      { id: 'ex_seated_cable_fly', name: 'Seated Mid-Cable Chest Fly', muscle: 'Chest', equipment: 'Cable', cue: 'Bench against cable tower for maximum stability.' },
+      { id: 'ex_pec_deck', name: 'Pec Deck Machine Fly', muscle: 'Chest', equipment: 'Machine', cue: 'Soft elbow bend, stretch wide without shoulder roll.' },
+      { id: 'ex_smith_inc', name: 'Smith Machine Incline Press', muscle: 'Chest', equipment: 'Smith Machine', cue: 'Controlled 3-second eccentric to upper chest.' },
+      { id: 'ex_smith_flat', name: 'Smith Machine Flat Press', muscle: 'Chest', equipment: 'Smith Machine', cue: 'Align bar with mid-sternum, pause 1s on chest.' },
+      { id: 'ex_dips_chest', name: 'Weighted Chest Dips', muscle: 'Chest', equipment: 'Bodyweight', cue: 'Lean torso forward 25°, flare elbows slightly.' },
+      { id: 'ex_db_flat', name: 'Flat Dumbbell Bench Press', muscle: 'Chest', equipment: 'Dumbbell', cue: 'Full ROM, neutral wrist alignment.' },
+
+      // Back (14)
+      { id: 'ex_lat_pulldown', name: 'Wide-Grip Lat Pulldown', muscle: 'Back', equipment: 'Cable', cue: 'Drive elbows down to hips, lean back slightly.' },
+      { id: 'ex_mag_pulldown', name: 'Neutral / MAG-Grip Lat Pulldown', muscle: 'Back', equipment: 'Cable', cue: 'Pull elbows tight to ribs for lower-lat bias.' },
+      { id: 'ex_single_lat_pd', name: 'Single-Arm Kneeling Cable Pulldown', muscle: 'Back', equipment: 'Cable', cue: 'Full overhead stretch, drive elbow into hip pocket.' },
+      { id: 'ex_barbell_row', name: 'Bent-Over Barbell Row', muscle: 'Back', equipment: 'Barbell', cue: '45° torso hinge, pull bar to lower sternum.' },
+      { id: 'ex_pendlay_row', name: 'Pendlay Row (Dead-Stop)', muscle: 'Back', equipment: 'Barbell', cue: 'Torso parallel to floor, explosive pull from floor each rep.' },
+      { id: 'ex_seated_cable_row', name: 'Seated Close-Grip Cable Row', muscle: 'Back', equipment: 'Cable', cue: 'Full scapular protraction on stretch, squeeze mid-back.' },
+      { id: 'ex_wide_cable_row', name: 'Seated Wide-Grip Upper Back Row', muscle: 'Back', equipment: 'Cable', cue: 'Flared elbows to target rhomboids and rear delts.' },
+      { id: 'ex_tbar_row', name: 'Chest-Supported T-Bar Row', muscle: 'Back', equipment: 'Machine', cue: 'Keep chest glued to pad, pull elbows high.' },
+      { id: 'ex_chest_supp_mach_row', name: 'Chest-Supported Diverging Machine Row', muscle: 'Back', equipment: 'Machine', cue: 'Let shoulder blades wrap forward at bottom, squeeze back.' },
+      { id: 'ex_meadows_row', name: 'Landmine Meadows Row', muscle: 'Back', equipment: 'Barbell', cue: 'Staggered stance, drive elbow high and back.' },
+      { id: 'ex_pullups', name: 'Weighted Pull-Ups', muscle: 'Back', equipment: 'Bodyweight', cue: 'Dead hang start, pull chin clearly over bar.' },
+      { id: 'ex_single_db_row', name: 'Single-Arm Dumbbell Row', muscle: 'Back', equipment: 'Dumbbell', cue: 'Row dumbbell back toward hip pocket.' },
+      { id: 'ex_straight_arm_pd', name: 'Straight-Arm Cable Pulldown', muscle: 'Back', equipment: 'Cable', cue: 'Lock elbows slightly bent, isolate lats.' },
+      { id: 'ex_db_pullover', name: 'Dumbbell Lat Pullover', muscle: 'Back', equipment: 'Dumbbell', cue: 'Keep hips low on bench, stretch lats deeply overhead.' },
+      { id: 'ex_deadlift', name: 'Conventional Barbell Deadlift', muscle: 'Back', equipment: 'Barbell', cue: 'Brace core 360°, wedge hips, push floor away.' },
+
+      // Legs (16)
+      { id: 'ex_squat', name: 'Barbell Back Squat', muscle: 'Legs', equipment: 'Barbell', cue: 'Brace hard, break at hips & knees, hit parallel+.' },
+      { id: 'ex_front_squat', name: 'Barbell Front Squat', muscle: 'Legs', equipment: 'Barbell', cue: 'Elbows high, upright torso, deep quad flexion.' },
+      { id: 'ex_smith_squat', name: 'Smith Machine Heel-Elevated Squat', muscle: 'Legs', equipment: 'Smith Machine', cue: 'Feet slightly forward, sink knees over toes for quads.' },
+      { id: 'ex_leg_press', name: '45° Commercial Leg Press', muscle: 'Legs', equipment: 'Machine', cue: 'Do not lock knees at top; lower until 90°+ knee flexion.' },
+      { id: 'ex_hack_squat', name: 'Linear Hack Squat Machine', muscle: 'Legs', equipment: 'Machine', cue: 'Low foot placement for quad bias, controlled depth.' },
+      { id: 'ex_pendulum_squat', name: 'Pendulum Squat Machine', muscle: 'Legs', equipment: 'Machine', cue: 'Bottom out depth safely with constant quad tension.' },
+      { id: 'ex_rdl', name: 'Barbell Romanian Deadlift', muscle: 'Legs', equipment: 'Barbell', cue: 'Push hips straight back, feel deep hamstring stretch.' },
+      { id: 'ex_db_rdl', name: 'Dumbbell Romanian Deadlift', muscle: 'Legs', equipment: 'Dumbbell', cue: 'Keep dumbbells close to shins, hinge until hamstrings stop.' },
+      { id: 'ex_leg_ext', name: 'Seated Leg Extension', muscle: 'Legs', equipment: 'Machine', cue: 'Pause 1s at full knee extension, slow lower.' },
+      { id: 'ex_lying_curl', name: 'Lying Hamstring Leg Curl', muscle: 'Legs', equipment: 'Machine', cue: 'Keep hips pressed into pad throughout curl.' },
+      { id: 'ex_seated_curl', name: 'Seated Leg Curl Machine', muscle: 'Legs', equipment: 'Machine', cue: 'Lock thigh pad tight, full stretch at top.' },
+      { id: 'ex_bulgarian', name: 'Dumbbell Bulgarian Split Squat', muscle: 'Legs', equipment: 'Dumbbell', cue: 'Slight forward lean, drive through front midfoot.' },
+      { id: 'ex_walking_lunge', name: 'Dumbbell Walking Lunges', muscle: 'Legs', equipment: 'Dumbbell', cue: 'Long stride, gently kiss back knee, drive through front heel.' },
+      { id: 'ex_hip_thrust', name: 'Barbell / Machine Hip Thrust', muscle: 'Legs', equipment: 'Machine', cue: 'Posterior pelvic tilt at top, chin tucked.' },
+      { id: 'ex_hip_adductor', name: 'Seated Hip Adductor Machine', muscle: 'Legs', equipment: 'Machine', cue: 'Control eccentric stretch, squeeze inner thighs together.' },
+      { id: 'ex_standing_calf', name: 'Standing Calf Raise Machine', muscle: 'Legs', equipment: 'Machine', cue: '2-second pause in deep bottom stretch.' },
+      { id: 'ex_seated_calf', name: 'Seated Calf Raise Machine', muscle: 'Legs', equipment: 'Machine', cue: 'Full ankle dorsiflexion at bottom, explosive peak.' },
+
+      // Shoulders (12)
+      { id: 'ex_ohp_bb', name: 'Standing Overhead Barbell Press', muscle: 'Shoulders', equipment: 'Barbell', cue: 'Squeeze glutes, press straight up, head through window.' },
+      { id: 'ex_db_shoulder_press', name: 'Seated Dumbbell Shoulder Press', muscle: 'Shoulders', equipment: 'Dumbbell', cue: '80° bench incline, lower dumbbells to ear level.' },
+      { id: 'ex_smith_ohp', name: 'Seated Smith Machine Overhead Press', muscle: 'Shoulders', equipment: 'Smith Machine', cue: 'Lower bar to chin level, press smoothly without arching.' },
+      { id: 'ex_mach_shoulder', name: 'Plate-Loaded Shoulder Press', muscle: 'Shoulders', equipment: 'Machine', cue: 'Controlled eccentric, explosive concentric drive.' },
+      { id: 'ex_db_lat_raise', name: 'Dumbbell Lateral Raise', muscle: 'Shoulders', equipment: 'Dumbbell', cue: 'Lead with elbows, pour slight pinky tilt, stop at shoulder height.' },
+      { id: 'ex_cable_lat_raise', name: 'Behind-Back Cable Lateral Raise', muscle: 'Shoulders', equipment: 'Cable', cue: 'Constant tension at bottom, smooth arc.' },
+      { id: 'ex_cuff_lat_raise', name: 'Wrist-Cuff Cable Y-Raise', muscle: 'Shoulders', equipment: 'Cable', cue: 'Raise arms in scapular plane (30° forward) for side delts.' },
+      { id: 'ex_mach_lat_raise', name: 'Seated Lateral Raise Machine', muscle: 'Shoulders', equipment: 'Machine', cue: 'Drive pads outward with elbows, pause at top.' },
+      { id: 'ex_face_pull', name: 'Rope Cable Face Pull', muscle: 'Shoulders', equipment: 'Cable', cue: 'Pull rope toward forehead, externally rotate thumbs back.' },
+      { id: 'ex_reverse_pec', name: 'Reverse Pec Deck Rear Delt Fly', muscle: 'Shoulders', equipment: 'Machine', cue: 'Sweep arms wide, avoid pinching traps together.' },
+      { id: 'ex_cable_rear_delt', name: 'Cross-Cable Rear Delt Fly', muscle: 'Shoulders', equipment: 'Cable', cue: 'Pull cables diagonally down and back across body.' },
+      { id: 'ex_upright_row', name: 'EZ-Bar / Cable Wide Upright Row', muscle: 'Shoulders', equipment: 'Cable', cue: 'Pull elbows up to shoulder level smoothly.' },
+
+      // Arms (14)
+      { id: 'ex_ez_curl', name: 'EZ-Bar Bicep Curl', muscle: 'Arms', equipment: 'Barbell', cue: 'Pin elbows at ribs, zero torso swing.' },
+      { id: 'ex_incline_db_curl', name: 'Incline Dumbbell Curl', muscle: 'Arms', equipment: 'Dumbbell', cue: 'Elbows behind torso for long-head stretch.' },
+      { id: 'ex_bayesian_curl', name: 'Bayesian Behind-Back Cable Curl', muscle: 'Arms', equipment: 'Cable', cue: 'Step forward of pulley, curl with elbow pinned behind hip.' },
+      { id: 'ex_hammer_curl', name: 'Dumbbell Hammer Curl', muscle: 'Arms', equipment: 'Dumbbell', cue: 'Neutral grip, target brachialis & forearms.' },
+      { id: 'ex_rope_hammer_curl', name: 'Cable Rope Hammer Curl', muscle: 'Arms', equipment: 'Cable', cue: 'Constant cable tension through full elbow flexion.' },
+      { id: 'ex_preacher_curl', name: 'Machine / EZ Preacher Curl', muscle: 'Arms', equipment: 'Machine', cue: 'Full extension without hyperextending elbow.' },
+      { id: 'ex_concentration_curl', name: 'Seated Dumbbell Concentration Curl', muscle: 'Arms', equipment: 'Dumbbell', cue: 'Brace triceps against inner thigh, supinate pinky up.' },
+      { id: 'ex_rope_pushdown', name: 'Cable Rope Tricep Pushdown', muscle: 'Arms', equipment: 'Cable', cue: 'Split rope apart at bottom lockout.' },
+      { id: 'ex_bar_pushdown', name: 'V-Bar / Straight-Bar Tricep Pushdown', muscle: 'Arms', equipment: 'Cable', cue: 'Heavy overload movement — keep elbows locked at sides.' },
+      { id: 'ex_overhead_tri_ext', name: 'Overhead Cable Tricep Extension', muscle: 'Arms', equipment: 'Cable', cue: 'Keep elbows pointed forward, deep long-head stretch.' },
+      { id: 'ex_cross_cable_tri', name: 'Cross-Body Dual Cable Tricep Extension', muscle: 'Arms', equipment: 'Cable', cue: 'Align upper arm with cable path for peak medial/lateral head.' },
+      { id: 'ex_skullcrusher', name: 'EZ-Bar Skullcrushers', muscle: 'Arms', equipment: 'Barbell', cue: 'Lower bar slightly behind crown of head.' },
+      { id: 'ex_jm_press', name: 'Smith Machine JM Press', muscle: 'Arms', equipment: 'Smith Machine', cue: 'Hybrid close-grip press & extension; lower bar toward chin.' },
+      { id: 'ex_dip_machine', name: 'Seated Tricep Dip Machine', muscle: 'Arms', equipment: 'Machine', cue: 'Upright torso to keep focus on triceps.' },
+
+      // Core (8)
+      { id: 'ex_cable_crunch', name: 'Kneeling Rope Cable Crunch', muscle: 'Core', equipment: 'Cable', cue: 'Curl ribs toward pelvis, keep hips stationary.' },
+      { id: 'ex_hanging_leg_raise', name: 'Hanging Leg / Knee Raise', muscle: 'Core', equipment: 'Bodyweight', cue: 'Curl pelvis upward at top, control descent.' },
+      { id: 'ex_captains_chair', name: 'Captain’s Chair Leg Raise', muscle: 'Core', equipment: 'Bodyweight', cue: 'Press lower back into pad, curl knees toward chest.' },
+      { id: 'ex_ab_wheel', name: 'Ab Wheel Rollout', muscle: 'Core', equipment: 'Bodyweight', cue: 'Maintain hollow body posterior pelvic tilt.' },
+      { id: 'ex_pallof_press', name: 'Cable Pallof Anti-Rotation Press', muscle: 'Core', equipment: 'Cable', cue: 'Press straight out and resist rotational pull.' },
+      { id: 'ex_decline_crunch', name: 'Weighted Decline Bench Crunch', muscle: 'Core', equipment: 'Bodyweight', cue: 'Hold plate at chest, exhale forcefully at peak.' },
+      { id: 'ex_machine_crunch', name: 'Seated Ab Crunch Machine', muscle: 'Core', equipment: 'Machine', cue: 'Exhale hard at full spinal flexion, slow eccentric.' },
+      { id: 'ex_plank', name: 'Weighted RKC Plank', muscle: 'Core', equipment: 'Bodyweight', cue: 'Max tension in glutes, quads, and abs.' }
+    ];
+
+    /**
+     * ============================================================================
+     * 3. 7 COMMERCIAL GYM SPLITS
+     * ============================================================================
+     */
+    const DEFAULT_SPLITS = [
+      {
+        id: 'split_5day_commercial',
+        name: '5-Day Commercial Gym Split',
+        badge: 'Most Popular',
+        daysPerWeek: 5,
+        description: 'Upper / Lower / Push / Pull / Legs hybrid engineered for commercial equipment & hypertrophy.',
+        days: [
+          {
+            id: 'd1', name: 'Day 1: Upper Power & Width',
+            exercises: [
+              { exerciseId: 'ex_bench_flat', targetSets: 3, targetReps: '6-8', restSec: 150 },
+              { exerciseId: 'ex_lat_pulldown', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_db_shoulder_press', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_seated_cable_row', targetSets: 3, targetReps: '10-12', restSec: 90 },
+              { exerciseId: 'ex_db_lat_raise', targetSets: 3, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_rope_pushdown', targetSets: 3, targetReps: '10-12', restSec: 60 }
+            ]
+          },
+          {
+            id: 'd2', name: 'Day 2: Lower Quad Focus',
+            exercises: [
+              { exerciseId: 'ex_squat', targetSets: 3, targetReps: '6-8', restSec: 180 },
+              { exerciseId: 'ex_rdl', targetSets: 3, targetReps: '8-10', restSec: 150 },
+              { exerciseId: 'ex_leg_press', targetSets: 3, targetReps: '10-12', restSec: 120 },
+              { exerciseId: 'ex_leg_ext', targetSets: 3, targetReps: '12-15', restSec: 75 },
+              { exerciseId: 'ex_standing_calf', targetSets: 4, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_cable_crunch', targetSets: 3, targetReps: '12-15', restSec: 60 }
+            ]
+          },
+          {
+            id: 'd3', name: 'Day 3: Push Hypertrophy',
+            exercises: [
+              { exerciseId: 'ex_bench_inc_db', targetSets: 4, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_chest_press_mach', targetSets: 3, targetReps: '10-12', restSec: 90 },
+              { exerciseId: 'ex_cable_lat_raise', targetSets: 4, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_pec_deck', targetSets: 3, targetReps: '12-15', restSec: 75 },
+              { exerciseId: 'ex_overhead_tri_ext', targetSets: 3, targetReps: '10-12', restSec: 75 }
+            ]
+          },
+          {
+            id: 'd4', name: 'Day 4: Pull Thickness & Arms',
+            exercises: [
+              { exerciseId: 'ex_tbar_row', targetSets: 4, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_pullups', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_reverse_pec', targetSets: 3, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_ez_curl', targetSets: 3, targetReps: '8-10', restSec: 75 },
+              { exerciseId: 'ex_hammer_curl', targetSets: 3, targetReps: '10-12', restSec: 60 }
+            ]
+          },
+          {
+            id: 'd5', name: 'Day 5: Lower Posterior & Glutes',
+            exercises: [
+              { exerciseId: 'ex_deadlift', targetSets: 3, targetReps: '5-6', restSec: 180 },
+              { exerciseId: 'ex_hack_squat', targetSets: 3, targetReps: '8-10', restSec: 150 },
+              { exerciseId: 'ex_seated_curl', targetSets: 4, targetReps: '10-12', restSec: 90 },
+              { exerciseId: 'ex_hip_thrust', targetSets: 3, targetReps: '10-12', restSec: 120 },
+              { exerciseId: 'ex_hanging_leg_raise', targetSets: 3, targetReps: '12-15', restSec: 60 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'split_4day_ul',
+        name: '4-Day Upper / Lower Split',
+        badge: 'Balanced',
+        daysPerWeek: 4,
+        description: 'High-frequency 2x/week muscle stimulation with 3 full recovery days.',
+        days: [
+          {
+            id: 'ul1', name: 'Upper A (Strength Focus)',
+            exercises: [
+              { exerciseId: 'ex_bench_flat', targetSets: 4, targetReps: '5-7', restSec: 150 },
+              { exerciseId: 'ex_barbell_row', targetSets: 4, targetReps: '6-8', restSec: 150 },
+              { exerciseId: 'ex_ohp_bb', targetSets: 3, targetReps: '6-8', restSec: 120 },
+              { exerciseId: 'ex_lat_pulldown', targetSets: 3, targetReps: '10-12', restSec: 90 },
+              { exerciseId: 'ex_skullcrusher', targetSets: 3, targetReps: '10-12', restSec: 75 },
+              { exerciseId: 'ex_ez_curl', targetSets: 3, targetReps: '10-12', restSec: 75 }
+            ]
+          },
+          {
+            id: 'ul2', name: 'Lower A (Squat Bias)',
+            exercises: [
+              { exerciseId: 'ex_squat', targetSets: 4, targetReps: '6-8', restSec: 180 },
+              { exerciseId: 'ex_rdl', targetSets: 3, targetReps: '8-10', restSec: 150 },
+              { exerciseId: 'ex_leg_ext', targetSets: 3, targetReps: '12-15', restSec: 75 },
+              { exerciseId: 'ex_lying_curl', targetSets: 3, targetReps: '10-12', restSec: 75 },
+              { exerciseId: 'ex_standing_calf', targetSets: 4, targetReps: '12-15', restSec: 60 }
+            ]
+          },
+          {
+            id: 'ul3', name: 'Upper B (Hypertrophy Focus)',
+            exercises: [
+              { exerciseId: 'ex_bench_inc_db', targetSets: 4, targetReps: '8-12', restSec: 120 },
+              { exerciseId: 'ex_seated_cable_row', targetSets: 4, targetReps: '10-12', restSec: 90 },
+              { exerciseId: 'ex_db_lat_raise', targetSets: 4, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_pec_deck', targetSets: 3, targetReps: '12-15', restSec: 75 },
+              { exerciseId: 'ex_bayesian_curl', targetSets: 3, targetReps: '10-12', restSec: 60 },
+              { exerciseId: 'ex_rope_pushdown', targetSets: 3, targetReps: '12-15', restSec: 60 }
+            ]
+          },
+          {
+            id: 'ul4', name: 'Lower B (Hinge & Unilateral)',
+            exercises: [
+              { exerciseId: 'ex_deadlift', targetSets: 3, targetReps: '5-6', restSec: 180 },
+              { exerciseId: 'ex_leg_press', targetSets: 4, targetReps: '10-12', restSec: 120 },
+              { exerciseId: 'ex_bulgarian', targetSets: 3, targetReps: '8-10', restSec: 90 },
+              { exerciseId: 'ex_seated_curl', targetSets: 3, targetReps: '12-15', restSec: 75 },
+              { exerciseId: 'ex_cable_crunch', targetSets: 3, targetReps: '12-15', restSec: 60 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'split_3day_ppl',
+        name: '3-Day Classic Push / Pull / Legs',
+        badge: 'Classic',
+        daysPerWeek: 3,
+        description: 'Streamlined 3-day rotation ideal for busy schedules or 6-day double rotation.',
+        days: [
+          {
+            id: 'ppl1', name: 'Push (Chest, Shoulders, Triceps)',
+            exercises: [
+              { exerciseId: 'ex_bench_flat', targetSets: 3, targetReps: '6-8', restSec: 150 },
+              { exerciseId: 'ex_bench_inc_db', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_db_shoulder_press', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_db_lat_raise', targetSets: 4, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_rope_pushdown', targetSets: 3, targetReps: '10-12', restSec: 75 }
+            ]
+          },
+          {
+            id: 'ppl2', name: 'Pull (Back, Rear Delts, Biceps)',
+            exercises: [
+              { exerciseId: 'ex_lat_pulldown', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_barbell_row', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_seated_cable_row', targetSets: 3, targetReps: '10-12', restSec: 90 },
+              { exerciseId: 'ex_face_pull', targetSets: 3, targetReps: '15-20', restSec: 60 },
+              { exerciseId: 'ex_ez_curl', targetSets: 3, targetReps: '10-12', restSec: 75 }
+            ]
+          },
+          {
+            id: 'ppl3', name: 'Legs & Core',
+            exercises: [
+              { exerciseId: 'ex_squat', targetSets: 3, targetReps: '6-8', restSec: 180 },
+              { exerciseId: 'ex_rdl', targetSets: 3, targetReps: '8-10', restSec: 150 },
+              { exerciseId: 'ex_leg_press', targetSets: 3, targetReps: '10-12', restSec: 120 },
+              { exerciseId: 'ex_lying_curl', targetSets: 3, targetReps: '10-12', restSec: 75 },
+              { exerciseId: 'ex_standing_calf', targetSets: 3, targetReps: '12-15', restSec: 60 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'split_3day_fb',
+        name: '3-Day Full Body Foundation',
+        badge: 'High Frequency',
+        daysPerWeek: 3,
+        description: 'Hit every major muscle group 3x per week for maximum protein synthesis.',
+        days: [
+          {
+            id: 'fb1', name: 'Full Body A',
+            exercises: [
+              { exerciseId: 'ex_squat', targetSets: 3, targetReps: '6-8', restSec: 150 },
+              { exerciseId: 'ex_bench_flat', targetSets: 3, targetReps: '6-8', restSec: 150 },
+              { exerciseId: 'ex_lat_pulldown', targetSets: 3, targetReps: '8-10', restSec: 90 },
+              { exerciseId: 'ex_db_lat_raise', targetSets: 3, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_ez_curl', targetSets: 2, targetReps: '10-12', restSec: 60 }
+            ]
+          },
+          {
+            id: 'fb2', name: 'Full Body B',
+            exercises: [
+              { exerciseId: 'ex_rdl', targetSets: 3, targetReps: '8-10', restSec: 150 },
+              { exerciseId: 'ex_ohp_bb', targetSets: 3, targetReps: '6-8', restSec: 120 },
+              { exerciseId: 'ex_seated_cable_row', targetSets: 3, targetReps: '10-12', restSec: 90 },
+              { exerciseId: 'ex_leg_ext', targetSets: 3, targetReps: '12-15', restSec: 75 },
+              { exerciseId: 'ex_rope_pushdown', targetSets: 2, targetReps: '10-12', restSec: 60 }
+            ]
+          },
+          {
+            id: 'fb3', name: 'Full Body C',
+            exercises: [
+              { exerciseId: 'ex_leg_press', targetSets: 3, targetReps: '10-12', restSec: 120 },
+              { exerciseId: 'ex_bench_inc_db', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_tbar_row', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_lying_curl', targetSets: 3, targetReps: '10-12', restSec: 75 },
+              { exerciseId: 'ex_cable_crunch', targetSets: 3, targetReps: '12-15', restSec: 60 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'split_6day_arnold',
+        name: '6-Day Arnold Antagonist Split',
+        badge: 'High Volume',
+        daysPerWeek: 6,
+        description: 'Chest/Back, Shoulders/Arms, Legs — elite pump and antagonist supersets.',
+        days: [
+          {
+            id: 'ar1', name: 'Day 1: Chest & Back A',
+            exercises: [
+              { exerciseId: 'ex_bench_flat', targetSets: 4, targetReps: '6-8', restSec: 150 },
+              { exerciseId: 'ex_pullups', targetSets: 4, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_bench_inc_db', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_seated_cable_row', targetSets: 3, targetReps: '10-12', restSec: 90 },
+              { exerciseId: 'ex_pec_deck', targetSets: 3, targetReps: '12-15', restSec: 60 }
+            ]
+          },
+          {
+            id: 'ar2', name: 'Day 2: Shoulders & Arms A',
+            exercises: [
+              { exerciseId: 'ex_ohp_bb', targetSets: 4, targetReps: '6-8', restSec: 120 },
+              { exerciseId: 'ex_db_lat_raise', targetSets: 4, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_ez_curl', targetSets: 3, targetReps: '8-10', restSec: 75 },
+              { exerciseId: 'ex_skullcrusher', targetSets: 3, targetReps: '8-10', restSec: 75 },
+              { exerciseId: 'ex_hammer_curl', targetSets: 3, targetReps: '10-12', restSec: 60 }
+            ]
+          },
+          {
+            id: 'ar3', name: 'Day 3: Legs & Core A',
+            exercises: [
+              { exerciseId: 'ex_squat', targetSets: 4, targetReps: '6-8', restSec: 180 },
+              { exerciseId: 'ex_rdl', targetSets: 3, targetReps: '8-10', restSec: 150 },
+              { exerciseId: 'ex_leg_ext', targetSets: 3, targetReps: '12-15', restSec: 75 },
+              { exerciseId: 'ex_lying_curl', targetSets: 3, targetReps: '10-12', restSec: 75 },
+              { exerciseId: 'ex_standing_calf', targetSets: 4, targetReps: '12-15', restSec: 60 }
+            ]
+          },
+          {
+            id: 'ar4', name: 'Day 4: Chest & Back B',
+            exercises: [
+              { exerciseId: 'ex_smith_inc', targetSets: 4, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_tbar_row', targetSets: 4, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_cable_fly_high', targetSets: 3, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_lat_pulldown', targetSets: 3, targetReps: '10-12', restSec: 90 }
+            ]
+          },
+          {
+            id: 'ar5', name: 'Day 5: Shoulders & Arms B',
+            exercises: [
+              { exerciseId: 'ex_mach_shoulder', targetSets: 4, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_cable_lat_raise', targetSets: 4, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_preacher_curl', targetSets: 3, targetReps: '10-12', restSec: 60 },
+              { exerciseId: 'ex_overhead_tri_ext', targetSets: 3, targetReps: '10-12', restSec: 60 }
+            ]
+          },
+          {
+            id: 'ar6', name: 'Day 6: Legs & Core B',
+            exercises: [
+              { exerciseId: 'ex_hack_squat', targetSets: 4, targetReps: '8-10', restSec: 150 },
+              { exerciseId: 'ex_seated_curl', targetSets: 4, targetReps: '10-12', restSec: 90 },
+              { exerciseId: 'ex_bulgarian', targetSets: 3, targetReps: '10-12', restSec: 90 },
+              { exerciseId: 'ex_hanging_leg_raise', targetSets: 3, targetReps: '12-15', restSec: 60 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'split_4day_bro',
+        name: '4-Day Classic Bodybuilding Split',
+        badge: 'Pump Focus',
+        daysPerWeek: 4,
+        description: 'Dedicated body-part focus days for maximum mind-muscle connection.',
+        days: [
+          {
+            id: 'bro1', name: 'Chest & Triceps',
+            exercises: [
+              { exerciseId: 'ex_bench_flat', targetSets: 4, targetReps: '6-8', restSec: 150 },
+              { exerciseId: 'ex_bench_inc_db', targetSets: 3, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_pec_deck', targetSets: 3, targetReps: '12-15', restSec: 75 },
+              { exerciseId: 'ex_rope_pushdown', targetSets: 3, targetReps: '10-12', restSec: 60 },
+              { exerciseId: 'ex_overhead_tri_ext', targetSets: 3, targetReps: '10-12', restSec: 60 }
+            ]
+          },
+          {
+            id: 'bro2', name: 'Back & Biceps',
+            exercises: [
+              { exerciseId: 'ex_lat_pulldown', targetSets: 4, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_barbell_row', targetSets: 4, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_straight_arm_pd', targetSets: 3, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_ez_curl', targetSets: 3, targetReps: '8-10', restSec: 75 },
+              { exerciseId: 'ex_incline_db_curl', targetSets: 3, targetReps: '10-12', restSec: 60 }
+            ]
+          },
+          {
+            id: 'bro3', name: 'Shoulders & Abs',
+            exercises: [
+              { exerciseId: 'ex_db_shoulder_press', targetSets: 4, targetReps: '8-10', restSec: 120 },
+              { exerciseId: 'ex_db_lat_raise', targetSets: 4, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_reverse_pec', targetSets: 3, targetReps: '12-15', restSec: 60 },
+              { exerciseId: 'ex_cable_crunch', targetSets: 3, targetReps: '12-15', restSec: 60 }
+            ]
+          },
+          {
+            id: 'bro4', name: 'Legs Complete',
+            exercises: [
+              { exerciseId: 'ex_squat', targetSets: 4, targetReps: '6-8', restSec: 180 },
+              { exerciseId: 'ex_leg_press', targetSets: 3, targetReps: '10-12', restSec: 120 },
+              { exerciseId: 'ex_lying_curl', targetSets: 3, targetReps: '10-12', restSec: 75 },
+              { exerciseId: 'ex_leg_ext', targetSets: 3, targetReps: '12-15', restSec: 75 },
+              { exerciseId: 'ex_standing_calf', targetSets: 4, targetReps: '12-15', restSec: 60 }
+            ]
+          }
+        ]
+      },
+      {
+        id: 'split_2day_weekend',
+        name: '2-Day Weekend Warrior Maintenance',
+        badge: 'Time Saver',
+        daysPerWeek: 2,
+        description: 'Two heavy compound-driven sessions to build/retain strength on tight schedules.',
+        days: [
+          {
+            id: 'ww1', name: 'Session A: Squat, Press & Row',
+            exercises: [
+              { exerciseId: 'ex_squat', targetSets: 3, targetReps: '6-8', restSec: 150 },
+              { exerciseId: 'ex_bench_flat', targetSets: 3, targetReps: '6-8', restSec: 150 },
+              { exerciseId: 'ex_seated_cable_row', targetSets: 3, targetReps: '8-10', restSec: 90 },
+              { exerciseId: 'ex_db_lat_raise', targetSets: 3, targetReps: '12-15', restSec: 60 }
+            ]
+          },
+          {
+            id: 'ww2', name: 'Session B: Hinge, Overhead & Pulldown',
+            exercises: [
+              { exerciseId: 'ex_deadlift', targetSets: 3, targetReps: '5-6', restSec: 180 },
+              { exerciseId: 'ex_ohp_bb', targetSets: 3, targetReps: '6-8', restSec: 120 },
+              { exerciseId: 'ex_lat_pulldown', targetSets: 3, targetReps: '8-10', restSec: 90 },
+              { exerciseId: 'ex_leg_press', targetSets: 3, targetReps: '10-12', restSec: 120 }
+            ]
+          }
+        ]
+      }
+    ];
+
+    /**
+     * ============================================================================
+     * 4. 8-TIER ATHLETE RANKING SYSTEM & QUESTS
+     * ============================================================================
+     */
+    const RANK_TIERS = [
+      { tier: 1, name: 'Iron Novice', minXp: 0, icon: '🔩', color: 'text-zinc-300', badgeBg: 'bg-zinc-800 border-zinc-600', gradient: 'from-zinc-600 to-zinc-800' },
+      { tier: 2, name: 'Plate Pusher', minXp: 500, icon: '🏋️', color: 'text-amber-300', badgeBg: 'bg-amber-950/70 border-amber-500/50', gradient: 'from-amber-500 to-orange-700' },
+      { tier: 3, name: 'Barbell Tactician', minXp: 1500, icon: '⚔️', color: 'text-orange-400', badgeBg: 'bg-orange-950/70 border-orange-500/50', gradient: 'from-orange-500 to-red-700' },
+      { tier: 4, name: 'Hypertrophy Architect', minXp: 3500, icon: '🏛️', color: 'text-orange-300', badgeBg: 'bg-orange-950/80 border-orange-400/50', gradient: 'from-amber-400 to-orange-600' },
+      { tier: 5, name: 'Steel Vanguard', minXp: 7000, icon: '🛡️', color: 'text-rose-400', badgeBg: 'bg-rose-950/70 border-rose-500/50', gradient: 'from-orange-500 to-rose-700' },
+      { tier: 6, name: 'Apex Lifter', minXp: 12500, icon: '⚡', color: 'text-amber-400', badgeBg: 'bg-amber-950/70 border-amber-500/50', gradient: 'from-yellow-500 to-orange-600' },
+      { tier: 7, name: 'Titan of Iron', minXp: 20000, icon: '🔥', color: 'text-orange-400', badgeBg: 'bg-orange-950/80 border-orange-500/60', gradient: 'from-orange-500 via-red-600 to-rose-800' },
+      { tier: 8, name: 'Mythic Olympia', minXp: 32000, icon: '👑', color: 'text-yellow-300', badgeBg: 'bg-yellow-950/70 border-yellow-400/60', gradient: 'from-yellow-400 via-orange-500 to-red-600' }
+    ];
+
+    const QUEST_DEFINITIONS = [
+      // Daily
+      { id: 'q_daily_session', category: 'Daily', title: 'Iron Discipline', desc: 'Complete 1 workout session today', xp: 150, check: (s) => getTodayWorkouts(s).length >= 1 },
+      { id: 'q_daily_12sets', category: 'Daily', title: 'Volume Builder', desc: 'Log at least 12 working sets today', xp: 100, check: (s) => getTodaySets(s) >= 12 },
+      { id: 'q_daily_weighin', category: 'Daily', title: 'Scale Accountability', desc: 'Log a body weight check-in today', xp: 75, check: (s) => getTodayBodyWeights(s).length >= 1 },
+      // Weekly
+      { id: 'q_week_3workouts', category: 'Weekly', title: 'Consistency Streak', desc: 'Complete 3 workouts in the last 7 days', xp: 350, check: (s) => getWeeklyWorkouts(s).length >= 3 },
+      { id: 'q_week_5000kg', category: 'Weekly', title: 'Five-Ton Club', desc: 'Lift 5,000+ kg total volume this week', xp: 400, check: (s) => getWeeklyVolume(s) >= 5000 },
+      { id: 'q_week_15000kg', category: 'Weekly', title: 'Heavy Artillery', desc: 'Lift 15,000+ kg total volume this week', xp: 750, check: (s) => getWeeklyVolume(s) >= 15000 },
+      // Lifetime
+      { id: 'q_life_first_pr', category: 'Lifetime', title: 'Record Breaker', desc: 'Hit your first estimated 1RM Personal Record', xp: 300, check: (s) => Object.keys(computeAllPRs(s)).length >= 1 },
+      { id: 'q_life_10workouts', category: 'Lifetime', title: 'Dedicated Regular', desc: 'Complete 10 total workouts', xp: 800, check: (s) => s.workouts.length >= 10 },
+      { id: 'q_life_squad_join', category: 'Lifetime', title: 'Squad Enlistment', desc: 'Connect to Cloud Sync & join a Squad', xp: 500, check: () => cloudState.connected }
+    ];
+
+    /**
+     * ============================================================================
+     * 5. STATE MANAGEMENT & LOCAL STORAGE
+     * ============================================================================
+     */
+    const STORAGE_KEY = 'ironpulse_v2_state';
+    const CLOUD_CFG_KEY = 'ironpulse_v2_cloud_cfg';
+
+    function generateAthleteId() {
+      return 'ath_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36).slice(-4);
+    }
+
+    function createSampleWorkouts() {
+      const now = Date.now();
+      const day = 86400000;
+      return [
+        {
+          id: 'w_sample_1',
+          splitName: '5-Day Commercial Gym Split',
+          dayName: 'Day 1: Upper Power & Width',
+          date: now - 5 * day,
+          durationSec: 3420,
+          exercises: [
+            { exerciseId: 'ex_bench_flat', sets: [{ weight: 80, reps: 8, rpe: 8 }, { weight: 82.5, reps: 7, rpe: 8.5 }, { weight: 82.5, reps: 6, rpe: 9 }] },
+            { exerciseId: 'ex_lat_pulldown', sets: [{ weight: 65, reps: 10, rpe: 8 }, { weight: 70, reps: 9, rpe: 8.5 }, { weight: 70, reps: 8, rpe: 9 }] },
+            { exerciseId: 'ex_db_shoulder_press', sets: [{ weight: 24, reps: 10, rpe: 8 }, { weight: 26, reps: 8, rpe: 8.5 }] },
+            { exerciseId: 'ex_db_lat_raise', sets: [{ weight: 12, reps: 15, rpe: 8 }, { weight: 12, reps: 14, rpe: 9 }] }
+          ]
+        },
+        {
+          id: 'w_sample_2',
+          splitName: '5-Day Commercial Gym Split',
+          dayName: 'Day 2: Lower Quad Focus',
+          date: now - 3 * day,
+          durationSec: 3780,
+          exercises: [
+            { exerciseId: 'ex_squat', sets: [{ weight: 110, reps: 8, rpe: 8 }, { weight: 115, reps: 7, rpe: 8.5 }, { weight: 120, reps: 6, rpe: 9 }] },
+            { exerciseId: 'ex_rdl', sets: [{ weight: 100, reps: 8, rpe: 8 }, { weight: 105, reps: 8, rpe: 8.5 }] },
+            { exerciseId: 'ex_leg_press', sets: [{ weight: 180, reps: 12, rpe: 8 }, { weight: 200, reps: 10, rpe: 8.5 }] }
+          ]
+        },
+        {
+          id: 'w_sample_3',
+          splitName: '5-Day Commercial Gym Split',
+          dayName: 'Day 5: Lower Posterior & Glutes',
+          date: now - 1 * day,
+          durationSec: 3600,
+          exercises: [
+            { exerciseId: 'ex_deadlift', sets: [{ weight: 140, reps: 6, rpe: 8 }, { weight: 150, reps: 5, rpe: 9 }] },
+            { exerciseId: 'ex_bench_inc_db', sets: [{ weight: 32, reps: 9, rpe: 8.5 }, { weight: 32, reps: 8, rpe: 9 }] },
+            { exerciseId: 'ex_seated_cable_row', sets: [{ weight: 70, reps: 10, rpe: 8 }, { weight: 75, reps: 10, rpe: 8.5 }] }
+          ]
+        }
+      ];
+    }
+
+    function getInitialState() {
+      try {
+        const saved = localStorage.getItem(STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (!parsed.athleteId) parsed.athleteId = generateAthleteId();
+          if (!parsed.athleteName) parsed.athleteName = 'Athlete';
+          if (!parsed.avatarId) parsed.avatarId = 'shiba';
+          if (!parsed.squadCode) parsed.squadCode = 'IRON-SQUAD';
+          if (!parsed.customExercises) parsed.customExercises = [];
+          if (!parsed.claimedQuests) parsed.claimedQuests = [];
+          if (!parsed.bodyWeights) parsed.bodyWeights = [];
+          return parsed;
+        }
+      } catch (e) {
+        console.warn('Error loading saved state:', e);
+      }
+      return {
+        athleteId: generateAthleteId(),
+        athleteName: 'Athlete',
+        avatarId: 'shiba',
+        squadCode: 'IRON-SQUAD',
+        activeSplitId: 'split_5day_commercial',
+        splits: JSON.parse(JSON.stringify(DEFAULT_SPLITS)),
+        customExercises: [],
+        workouts: createSampleWorkouts(),
+        bodyWeights: [
+          { date: Date.now() - 21 * 86400000, weight: 78.4 },
+          { date: Date.now() - 14 * 86400000, weight: 78.9 },
+          { date: Date.now() - 7 * 86400000, weight: 79.2 },
+          { date: Date.now() - 1 * 86400000, weight: 79.5 }
+        ],
+        bonusXp: 350,
+        claimedQuests: [],
+        selectedChartExercise: 'ex_bench_flat'
+      };
+    }
+
+    let appState = getInitialState();
+    let activeTab = 'home';
+    let squadSortBy = 'xp'; // 'xp' | 'weeklyVolume' | 'weeklyWorkouts' | 'prCount'
+
+    // Active Workout Session State
+    let activeSession = null;
+    let sessionTimerInterval = null;
+    let restTimerState = { remaining: 0, total: 90, interval: null, active: false };
+
+    // Cloud Sync State
+    let cloudState = {
+      connected: false,
+      connecting: false,
+      error: null,
+      db: null,
+      auth: null,
+      members: [],
+      feed: [],
+      unsubMembers: null,
+      unsubFeed: null,
+      lastSyncedAt: null
+    };
+
+    function saveState(syncToCloud = true) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+      } catch (e) {
+        console.error('Failed to save state:', e);
+      }
+      updateHeaderUI();
+      if (syncToCloud && cloudState.connected) {
+        syncMemberProfileToCloud();
+      }
+    }
+
+    /**
+     * ============================================================================
+     * 6. METRICS, XP, RANKS & PROGRESS CALCULATIONS
+     * ============================================================================
+     */
+    function getAllExercises() {
+      return [...EXERCISE_DB, ...(appState.customExercises || [])];
+    }
+
+    function getExerciseById(id) {
+      return getAllExercises().find(e => e.id === id) || { id, name: 'Unknown Exercise', muscle: 'Other', equipment: 'Gym', cue: '' };
+    }
+
+    function calcE1RM(weight, reps) {
+      const w = parseFloat(weight) || 0;
+      const r = parseInt(reps, 10) || 0;
+      if (w <= 0 || r <= 0) return 0;
+      if (r === 1) return Math.round(w * 10) / 10;
+      return Math.round(w * (1 + r / 30) * 10) / 10;
+    }
+
+    function getWorkoutVolume(workout) {
+      let vol = 0;
+      (workout.exercises || []).forEach(ex => {
+        (ex.sets || []).forEach(s => {
+          vol += (parseFloat(s.weight) || 0) * (parseInt(s.reps, 10) || 0);
+        });
+      });
+      return Math.round(vol);
+    }
+
+    function getWorkoutSetsCount(workout) {
+      let count = 0;
+      (workout.exercises || []).forEach(ex => { count += (ex.sets || []).length; });
+      return count;
+    }
+
+    function getTotalVolume(state = appState) {
+      return state.workouts.reduce((sum, w) => sum + getWorkoutVolume(w), 0);
+    }
+
+    function getTotalSets(state = appState) {
+      return state.workouts.reduce((sum, w) => sum + getWorkoutSetsCount(w), 0);
+    }
+
+    function getWeeklyWorkouts(state = appState) {
+      const cutoff = Date.now() - 7 * 86400000;
+      return state.workouts.filter(w => w.date >= cutoff);
+    }
+
+    function getWeeklyVolume(state = appState) {
+      return getWeeklyWorkouts(state).reduce((sum, w) => sum + getWorkoutVolume(w), 0);
+    }
+
+    function getTodayWorkouts(state = appState) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      return state.workouts.filter(w => w.date >= startOfDay.getTime());
+    }
+
+    function getTodayBodyWeights(state = appState) {
+      const startOfDay = new Date();
+      startOfDay.setHours(0, 0, 0, 0);
+      return (state.bodyWeights || []).filter(b => b.date >= startOfDay.getTime());
+    }
+
+    function getTodaySets(state = appState) {
+      return getTodayWorkouts(state).reduce((sum, w) => sum + getWorkoutSetsCount(w), 0);
+    }
+
+    function computeAllPRs(state = appState) {
+      const prs = {};
+      state.workouts.forEach(w => {
+        (w.exercises || []).forEach(ex => {
+          (ex.sets || []).forEach(s => {
+            const e1rm = calcE1RM(s.weight, s.reps);
+            if (e1rm > 0 && (!prs[ex.exerciseId] || e1rm > prs[ex.exerciseId].e1rm)) {
+              prs[ex.exerciseId] = { e1rm, weight: s.weight, reps: s.reps, date: w.date };
+            }
+          });
+        });
+      });
+      return prs;
+    }
+
+    function getTopLiftsSummary(state = appState) {
+      const prs = computeAllPRs(state);
+      const priorityIds = ['ex_bench_flat', 'ex_squat', 'ex_deadlift', 'ex_ohp_bb', 'ex_leg_press'];
+      const results = [];
+      priorityIds.forEach(id => {
+        if (prs[id]) {
+          const ex = getExerciseById(id);
+          results.push({
+            id,
+            name: ex.name.replace('Barbell ', '').replace('45° Commercial ', ''),
+            weight: prs[id].weight,
+            reps: prs[id].reps,
+            e1rm: prs[id].e1rm
+          });
+        }
+      });
+      if (results.length < 3) {
+        Object.entries(prs)
+          .sort((a, b) => b[1].e1rm - a[1].e1rm)
+          .forEach(([id, data]) => {
+            if (results.length < 3 && !results.find(r => r.id === id)) {
+              results.push({
+                id,
+                name: getExerciseById(id).name,
+                weight: data.weight,
+                reps: data.reps,
+                e1rm: data.e1rm
+              });
+            }
+          });
+      }
+      return results.slice(0, 3);
+    }
+
+    function calculateTotalXP(state = appState) {
+      let xp = state.bonusXp || 0;
+      xp += state.workouts.length * 250;
+      xp += getTotalSets(state) * 15;
+      xp += Math.floor(getTotalVolume(state) / 100);
+      xp += Object.keys(computeAllPRs(state)).length * 75;
+      return xp;
+    }
+
+    function getRankForXP(xp) {
+      let current = RANK_TIERS[0];
+      let next = RANK_TIERS[1] || null;
+      for (let i = 0; i < RANK_TIERS.length; i++) {
+        if (xp >= RANK_TIERS[i].minXp) {
+          current = RANK_TIERS[i];
+          next = RANK_TIERS[i + 1] || null;
+        }
+      }
+      const progressPct = next
+        ? Math.min(100, Math.max(0, Math.round(((xp - current.minXp) / (next.minXp - current.minXp)) * 100)))
+        : 100;
+      return { current, next, progressPct };
+    }
+
+    function getLastExercisePerformance(exerciseId) {
+      const sorted = [...appState.workouts].sort((a, b) => b.date - a.date);
+      for (const w of sorted) {
+        const found = (w.exercises || []).find(e => e.exerciseId === exerciseId);
+        if (found && found.sets && found.sets.length > 0) {
+          const best = found.sets.reduce((top, s) => (s.weight > top.weight ? s : top), found.sets[0]);
+          return `${best.weight}kg × ${best.reps}`;
+        }
+      }
+      return null;
+    }
+
+    /**
+     * ============================================================================
+     * 7. FIREBASE CLOUD SYNC ENGINE (REAL-TIME SQUAD & LEADERBOARD)
+     * ============================================================================
+     */
+    function parseFirebaseConfigInput(rawInput) {
+      if (!rawInput || typeof rawInput !== 'string') return null;
+      const trimmed = rawInput.trim();
+      if (!trimmed) return null;
+
+      try {
+        const direct = JSON.parse(trimmed);
+        if (direct && direct.apiKey && direct.projectId) return direct;
+      } catch (_) {}
+
+      const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId', 'measurementId'];
+      const extracted = {};
+      keys.forEach(k => {
+        const regex = new RegExp(`["']?${k}["']?\\s*:\\s*["']([^"']+)["']`, 'i');
+        const match = trimmed.match(regex);
+        if (match && match[1]) extracted[k] = match[1].trim();
+      });
+
+      if (extracted.apiKey && extracted.projectId) {
+        return extracted;
+      }
+      return null;
+    }
+
+    function getStoredCloudConfig() {
+      try {
+        const saved = localStorage.getItem(CLOUD_CFG_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.apiKey && parsed.projectId) return parsed;
+        }
+      } catch (_) {}
+
+      if (DEFAULT_FIREBASE_CONFIG && DEFAULT_FIREBASE_CONFIG.apiKey && DEFAULT_FIREBASE_CONFIG.projectId) {
+        return DEFAULT_FIREBASE_CONFIG;
+      }
+      return null;
+    }
+
+    function checkInviteUrlParam() {
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const squadParam = params.get('squad');
+        if (squadParam && squadParam.trim().length >= 2) {
+          const cleanCode = squadParam.trim().toUpperCase().replace(/[^A-Z0-9-_]/g, '');
+          if (cleanCode && cleanCode !== appState.squadCode) {
+            appState.squadCode = cleanCode;
+            saveState(false);
+            showToast(`Joined Squad Room: ${cleanCode}`, 'orange');
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function initFirebaseCloud(configObj, silent = false) {
+      const cfg = configObj || getStoredCloudConfig();
+      if (!cfg || !cfg.apiKey || !cfg.projectId) {
+        cloudState.connected = false;
+        updateCloudStatusUI();
+        return false;
+      }
+
+      if (typeof firebase === 'undefined') {
+        cloudState.error = 'Firebase SDK failed to load. Check internet connection.';
+        updateCloudStatusUI();
+        return false;
+      }
+
+      cloudState.connecting = true;
+      cloudState.error = null;
+      updateCloudStatusUI();
+
+      try {
+        let app;
+        if (firebase.apps && firebase.apps.length > 0) {
+          app = firebase.apps[0];
+        } else {
+          app = firebase.initializeApp(cfg);
+        }
+
+        cloudState.auth = firebase.auth();
+        cloudState.db = firebase.firestore();
+
+        if (!cloudState.auth.currentUser) {
+          await cloudState.auth.signInAnonymously();
+        }
+
+        localStorage.setItem(CLOUD_CFG_KEY, JSON.stringify(cfg));
+        cloudState.connected = true;
+        cloudState.connecting = false;
+        cloudState.error = null;
+
+        updateCloudStatusUI();
+        await syncMemberProfileToCloud();
+        attachSquadListeners();
+
+        if (!silent) {
+          showToast(`Connected to Squad: ${appState.squadCode}`, 'orange');
+        }
+        return true;
+      } catch (err) {
+        console.error('Firebase init error:', err);
+        cloudState.connected = false;
+        cloudState.connecting = false;
+        cloudState.error = err.message || 'Could not connect to Firebase.';
+        updateCloudStatusUI();
+        if (!silent) {
+          showToast('Cloud connection error: ' + cloudState.error, 'rose');
+        }
+        return false;
+      }
+    }
+
+    function detachSquadListeners() {
+      if (cloudState.unsubMembers) {
+        cloudState.unsubMembers();
+        cloudState.unsubMembers = null;
+      }
+      if (cloudState.unsubFeed) {
+        cloudState.unsubFeed();
+        cloudState.unsubFeed = null;
+      }
+    }
+
+    function attachSquadListeners() {
+      if (!cloudState.connected || !cloudState.db) return;
+      detachSquadListeners();
+
+      const squadCode = (appState.squadCode || 'IRON-SQUAD').toUpperCase();
+
+      cloudState.unsubMembers = cloudState.db
+        .collection('squads')
+        .doc(squadCode)
+        .collection('members')
+        .onSnapshot(
+          (snapshot) => {
+            const list = [];
+            snapshot.forEach(doc => list.push({ id: doc.id, ...doc.data() }));
+            cloudState.members = list;
+            if (activeTab === 'squad' || activeTab === 'home') renderApp();
+          },
+          (err) => {
+            console.error('Members snapshot error:', err);
+            cloudState.error = 'Firestore permission error. Check Firestore security rules.';
+            updateCloudStatusUI();
+          }
+        );
+
+      cloudState.unsubFeed = cloudState.db
+        .collection('squads')
+        .doc(squadCode)
+        .collection('feed')
+        .onSnapshot(
+          (snapshot) => {
+            const items = [];
+            snapshot.forEach(doc => items.push({ id: doc.id, ...doc.data() }));
+            items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            cloudState.feed = items.slice(0, 25);
+            if (activeTab === 'squad') renderApp();
+          },
+          (err) => {
+            console.error('Feed snapshot error:', err);
+          }
+        );
+    }
+
+    async function syncMemberProfileToCloud() {
+      if (!cloudState.connected || !cloudState.db) return;
+      try {
+        const squadCode = (appState.squadCode || 'IRON-SQUAD').toUpperCase();
+        const xp = calculateTotalXP();
+        const rankInfo = getRankForXP(xp);
+        const prs = computeAllPRs();
+        const latestWorkout = [...appState.workouts].sort((a, b) => b.date - a.date)[0];
+        const latestBw = appState.bodyWeights && appState.bodyWeights.length
+          ? appState.bodyWeights[appState.bodyWeights.length - 1].weight
+          : null;
+
+        const payload = {
+          athleteId: appState.athleteId,
+          name: appState.athleteName || 'Athlete',
+          avatarId: appState.avatarId || 'shiba',
+          squadCode,
+          xp,
+          rankTier: rankInfo.current.tier,
+          rankName: rankInfo.current.name,
+          rankIcon: rankInfo.current.icon,
+          rankProgressPct: rankInfo.progressPct,
+          totalWorkouts: appState.workouts.length,
+          weeklyWorkouts: getWeeklyWorkouts().length,
+          weeklyVolume: getWeeklyVolume(),
+          totalVolume: getTotalVolume(),
+          totalSets: getTotalSets(),
+          prCount: Object.keys(prs).length,
+          bodyWeight: latestBw,
+          topLifts: getTopLiftsSummary(),
+          lastWorkoutName: latestWorkout ? latestWorkout.dayName : 'No workouts yet',
+          lastWorkoutDate: latestWorkout ? latestWorkout.date : null,
+          updatedAt: Date.now()
+        };
+
+        await cloudState.db
+          .collection('squads')
+          .doc(squadCode)
+          .collection('members')
+          .doc(appState.athleteId)
+          .set(payload, { merge: true });
+
+        cloudState.lastSyncedAt = Date.now();
+        updateCloudStatusUI();
+      } catch (err) {
+        console.error('Sync profile error:', err);
+      }
+    }
+
+    async function postSquadActivityEvent(eventObj) {
+      if (!cloudState.connected || !cloudState.db) return;
+      try {
+        const squadCode = (appState.squadCode || 'IRON-SQUAD').toUpperCase();
+        const eventId = 'evt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+        await cloudState.db
+          .collection('squads')
+          .doc(squadCode)
+          .collection('feed')
+          .doc(eventId)
+          .set({
+            athleteId: appState.athleteId,
+            athleteName: appState.athleteName || 'Athlete',
+            avatarId: appState.avatarId || 'shiba',
+            rankIcon: getRankForXP(calculateTotalXP()).current.icon,
+            createdAt: Date.now(),
+            kudosCount: 0,
+            kudosBy: [],
+            ...eventObj
+          });
+      } catch (err) {
+        console.error('Failed to post squad feed event:', err);
+      }
+    }
+
+    async function toggleFeedKudos(eventId) {
+      if (!cloudState.connected || !cloudState.db) {
+        showToast('Connect Cloud Sync to send Fist Bumps!', 'amber');
+        return;
+      }
+      const item = cloudState.feed.find(f => f.id === eventId);
+      if (!item) return;
+
+      const squadCode = (appState.squadCode || 'IRON-SQUAD').toUpperCase();
+      const kudosBy = Array.isArray(item.kudosBy) ? [...item.kudosBy] : [];
+      const idx = kudosBy.indexOf(appState.athleteId);
+
+      if (idx >= 0) {
+        kudosBy.splice(idx, 1);
+      } else {
+        kudosBy.push(appState.athleteId);
+      }
+
+      try {
+        await cloudState.db
+          .collection('squads')
+          .doc(squadCode)
+          .collection('feed')
+          .doc(eventId)
+          .update({
+            kudosBy,
+            kudosCount: kudosBy.length
+          });
+      } catch (err) {
+        console.error('Kudos update error:', err);
+      }
+    }
+
+    function updateCloudStatusUI() {
+      const badge = document.getElementById('cloudStatusBadge');
+      const dot = document.getElementById('squadNavDot');
+      if (!badge) return;
+
+      if (cloudState.connecting) {
+        badge.className = 'cursor-pointer inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40';
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping"></span> Connecting...`;
+      } else if (cloudState.connected) {
+        badge.className = 'cursor-pointer inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-950/90 text-orange-300 border border-orange-500/40';
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse"></span> Live • ${escapeHtml(appState.squadCode)}`;
+        if (dot) dot.classList.remove('hidden');
+      } else {
+        badge.className = 'cursor-pointer inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-900 text-zinc-400 border border-zinc-800';
+        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-zinc-500"></span> Local Mode`;
+        if (dot) dot.classList.add('hidden');
+      }
+    }
+
+    /**
+     * ============================================================================
+     * 8. UI HELPERS, AUDIO CHIME, TOASTS & CLIPBOARD
+     * ============================================================================
+     */
+    function escapeHtml(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function timeAgo(timestamp) {
+      if (!timestamp) return 'Just now';
+      const diff = Math.max(0, Date.now() - timestamp);
+      const mins = Math.floor(diff / 60000);
+      if (mins < 1) return 'Just now';
+      if (mins < 60) return `${mins}m ago`;
+      const hrs = Math.floor(mins / 60);
+      if (hrs < 24) return `${hrs}h ago`;
+      const days = Math.floor(hrs / 24);
+      return `${days}d ago`;
+    }
+
+    function formatDuration(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    function copyTextFallback(text, successMsg = 'Copied to clipboard!') {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast(successMsg, 'orange');
+      } catch (e) {
+        showToast('Could not copy automatically. Please select and copy.', 'amber');
+      }
+      document.body.removeChild(ta);
+    }
+
+    function showToast(message, tone = 'orange') {
+      const container = document.getElementById('toastContainer');
+      if (!container) return;
+      const colors = {
+        orange: 'bg-zinc-900/95 border-orange-500/60 text-orange-200',
+        amber: 'bg-zinc-900/95 border-amber-500/60 text-amber-200',
+        rose: 'bg-zinc-900/95 border-rose-500/60 text-rose-200'
+      };
+      const el = document.createElement('div');
+      el.className = `pop-in pointer-events-auto px-4 py-2.5 rounded-xl border shadow-xl text-xs font-bold flex items-center justify-between gap-2 ${colors[tone] || colors.orange}`;
+      el.innerHTML = `<span>${escapeHtml(message)}</span>`;
+      container.appendChild(el);
+      setTimeout(() => {
+        el.style.opacity = '0';
+        el.style.transition = 'opacity 0.25s';
+        setTimeout(() => el.remove(), 260);
+      }, 3000);
+    }
+
+    function playRestChime() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const notes = [587.33, 880];
+        notes.forEach((freq, i) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.16);
+          gain.gain.setValueAtTime(0.18, ctx.currentTime + i * 0.16);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.16 + 0.35);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(ctx.currentTime + i * 0.16);
+          osc.stop(ctx.currentTime + i * 0.16 + 0.36);
+        });
+      } catch (_) {}
+    }
+
+    function updateHeaderUI() {
+      const xp = calculateTotalXP();
+      const { current } = getRankForXP(xp);
+      const iconEl = document.getElementById('headerRankIcon');
+      const xpEl = document.getElementById('headerXpText');
+      const avatarBtn = document.getElementById('headerAvatarBtn');
+      if (iconEl) iconEl.textContent = current.icon;
+      if (xpEl) xpEl.textContent = `${xp.toLocaleString()} XP`;
+      if (avatarBtn) {
+        const av = getAvatarObj(appState.avatarId);
+        avatarBtn.innerHTML = `<div class="w-full h-full p-1 bg-gradient-to-br ${av.bg}">${av.svg}</div>`;
+      }
+      updateCloudStatusUI();
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      document.querySelectorAll('.nav-btn').forEach(btn => {
+        if (btn.dataset.tab === tab) {
+          btn.classList.remove('text-zinc-400');
+          btn.classList.add('text-orange-400', 'bg-zinc-900');
+        } else {
+          btn.classList.add('text-zinc-400');
+          btn.classList.remove('text-orange-400', 'bg-zinc-900');
+        }
+      });
+      renderApp();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /**
+     * ============================================================================
+     * 9. MAIN VIEW ROUTER & RENDERERS
+     * ============================================================================
+     */
+    function renderApp() {
+      updateHeaderUI();
+      const main = document.getElementById('appMain');
+      if (!main) return;
+
+      if (activeTab === 'home') main.innerHTML = renderHomeTab();
+      else if (activeTab === 'workouts') main.innerHTML = renderWorkoutsTab();
+      else if (activeTab === 'squad') main.innerHTML = renderSquadTab();
+      else if (activeTab === 'ranks') main.innerHTML = renderRanksTab();
+      else if (activeTab === 'progress') main.innerHTML = renderProgressTab();
+      else if (activeTab === 'history') main.innerHTML = renderHistoryTab();
+    }
+
+    /* ------------------------- TAB 1: HOME DASHBOARD ------------------------- */
+    function renderHomeTab() {
+      const xp = calculateTotalXP();
+      const { current, next, progressPct } = getRankForXP(xp);
+      const activeSplit = appState.splits.find(s => s.id === appState.activeSplitId) || appState.splits[0];
+      const weeklyWorkouts = getWeeklyWorkouts();
+      const weeklyVol = getWeeklyVolume();
+      const prsCount = Object.keys(computeAllPRs()).length;
+      const myAvatar = getAvatarObj(appState.avatarId);
+
+      // Body weight stats
+      const bwList = appState.bodyWeights || [];
+      const latestBw = bwList.length > 0 ? bwList[bwList.length - 1].weight : null;
+      const prevBw = bwList.length > 1 ? bwList[bwList.length - 2].weight : null;
+      const bwDelta = (latestBw !== null && prevBw !== null) ? (latestBw - prevBw).toFixed(1) : null;
+
+      // Suggest next workout day in active split
+      const nextDayIndex = appState.workouts.length % activeSplit.days.length;
+      const suggestedDay = activeSplit.days[nextDayIndex] || activeSplit.days[0];
+
+      // Squad preview widget
+      const sortedSquad = [...cloudState.members].sort((a, b) => (b.xp || 0) - (a.xp || 0));
+      const mySquadPos = sortedSquad.findIndex(m => m.athleteId === appState.athleteId);
+
+      return `
+        <!-- ATHLETE RANK HERO CARD -->
+        <section class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-850 border border-zinc-800 p-4 rank-glow">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-3.5">
+              <button onclick="openAvatarPickerModal()" title="Change Animal Avatar" class="relative group shrink-0">
+                ${renderAvatarBadge(appState.avatarId, 'w-16 h-16')}
+                <span class="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded-md bg-zinc-950 border border-zinc-700 text-[9px] font-black text-orange-400 group-hover:border-orange-500">
+                  Edit
+                </span>
+              </button>
+              <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-md ${current.badgeBg} ${current.color} border">
+                    ${current.icon} Tier ${current.tier}
+                  </span>
+                  <span class="text-xs font-bold text-zinc-300">${escapeHtml(appState.athleteName)}</span>
+                  <span class="text-[10px] font-semibold text-orange-400/90">• ${escapeHtml(myAvatar.name)}</span>
+                </div>
+                <h2 class="text-xl font-black text-white mt-1">${current.name}</h2>
+                <p class="text-xs text-zinc-400">${xp.toLocaleString()} Total XP ${next ? `• ${(next.minXp - xp).toLocaleString()} XP to ${next.name}` : '• Max Rank Achieved'}</p>
+              </div>
+            </div>
+            <button onclick="openShareRankModal()" class="px-2.5 py-1.5 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-xs font-bold text-orange-400 border border-zinc-700 transition shrink-0">
+              Card
+            </button>
+          </div>
+
+          <!-- XP Progress Bar -->
+          <div class="mt-4">
+            <div class="flex justify-between text-[11px] font-bold text-zinc-400 mb-1">
+              <span>Rank Progress</span>
+              <span class="text-orange-400">${progressPct}%</span>
+            </div>
+            <div class="w-full h-2.5 rounded-full bg-zinc-950 overflow-hidden border border-zinc-800">
+              <div class="h-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-500" style="width: ${progressPct}%"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- QUICK STATS GRID -->
+        <section class="grid grid-cols-3 gap-2.5">
+          <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-3">
+            <p class="text-[11px] font-semibold text-zinc-400">7-Day Sessions</p>
+            <p class="text-xl font-black text-white mt-0.5">${weeklyWorkouts.length} <span class="text-xs font-bold text-orange-400">/ ${activeSplit.daysPerWeek}</span></p>
+          </div>
+          <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-3">
+            <p class="text-[11px] font-semibold text-zinc-400">Weekly Volume</p>
+            <p class="text-xl font-black text-amber-400 mt-0.5">${(weeklyVol / 1000).toFixed(1)}<span class="text-xs font-bold text-zinc-400">t</span></p>
+          </div>
+          <div class="rounded-2xl bg-zinc-900/90 border border-zinc-800 p-3">
+            <p class="text-[11px] font-semibold text-zinc-400">All-Time PRs</p>
+            <p class="text-xl font-black text-orange-400 mt-0.5">${prsCount}</p>
+          </div>
+        </section>
+
+        <!-- QUICK BODY WEIGHT CHECK-IN CARD -->
+        <section class="rounded-2xl bg-zinc-900 border border-zinc-800 p-3.5 flex items-center justify-between gap-3">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-extrabold uppercase tracking-wider text-orange-400">⚖️ Body Weight</span>
+              ${bwDelta !== null ? `
+                <span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${parseFloat(bwDelta) > 0 ? 'bg-amber-500/15 text-amber-300' : parseFloat(bwDelta) < 0 ? 'bg-orange-500/15 text-orange-300' : 'bg-zinc-800 text-zinc-400'}">
+                  ${parseFloat(bwDelta) > 0 ? '+' + bwDelta : bwDelta} kg
+                </span>
+              ` : ''}
+            </div>
+            <p class="text-lg font-black text-white mt-0.5">
+              ${latestBw !== null ? `${latestBw} <span class="text-xs font-bold text-zinc-400">kg</span>` : '<span class="text-sm text-zinc-400">No weigh-in yet</span>'}
+            </p>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <input id="homeBwInput" type="number" step="0.1" placeholder="${latestBw || '75.0'}"
+              class="w-20 px-2.5 py-2 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-orange-500 outline-none text-xs font-bold text-white text-center" />
+            <button onclick="logBodyWeight('homeBwInput')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 text-xs font-black hover:brightness-110 transition shrink-0">
+              + Log kg
+            </button>
+          </div>
+        </section>
+
+        <!-- NEXT UP WORKOUT LAUNCHER -->
+        <section class="rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-[11px] font-extrabold uppercase tracking-wider text-orange-400">Next Scheduled Session</span>
+            <button onclick="switchTab('workouts')" class="text-xs font-bold text-zinc-400 hover:text-white">Change Split →</button>
+          </div>
+          <h3 class="text-lg font-extrabold text-white">${escapeHtml(suggestedDay.name)}</h3>
+          <p class="text-xs text-zinc-400 mt-0.5">${escapeHtml(activeSplit.name)} • ${suggestedDay.exercises.length} exercises</p>
+
+          <div class="mt-3 flex flex-wrap gap-1.5">
+            ${suggestedDay.exercises.slice(0, 4).map(item => `
+              <span class="px-2.5 py-1 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] font-medium text-zinc-300">
+                ${escapeHtml(getExerciseById(item.exerciseId).name)}
+              </span>
+            `).join('')}
+            ${suggestedDay.exercises.length > 4 ? `<span class="px-2.5 py-1 rounded-lg bg-zinc-950 text-[11px] font-bold text-zinc-400">+${suggestedDay.exercises.length - 4} more</span>` : ''}
+          </div>
+
+          <button onclick="startWorkoutSession('${activeSplit.id}', '${suggestedDay.id}')" class="mt-4 w-full py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 font-black text-sm shadow-lg shadow-orange-500/20 hover:brightness-110 active:scale-[0.99] transition flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd"/></svg>
+            Start Workout Session
+          </button>
+        </section>
+
+        <!-- LIVE SQUAD LEADERBOARD SNAPSHOT -->
+        <section class="rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="text-base">🏆</span>
+              <div>
+                <h3 class="text-sm font-extrabold text-white">Squad Leaderboard</h3>
+                <p class="text-[11px] text-zinc-400">
+                  ${cloudState.connected ? `Room: <span class="text-orange-400 font-bold">${escapeHtml(appState.squadCode)}</span> • ${sortedSquad.length} active` : 'Sync with friends in real time'}
+                </p>
+              </div>
+            </div>
+            <button onclick="switchTab('squad')" class="px-3 py-1.5 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-xs font-bold text-orange-400 border border-zinc-800 transition">
+              ${cloudState.connected ? 'Open Squad →' : 'Connect →'}
+            </button>
+          </div>
+
+          ${cloudState.connected && sortedSquad.length > 0 ? `
+            <div class="space-y-2">
+              ${sortedSquad.slice(0, 3).map((m, idx) => {
+                const isMe = m.athleteId === appState.athleteId;
+                const medals = ['🥇', '🥈', '🥉'];
+                return `
+                  <div onclick="openMemberComparisonModal('${m.athleteId}')" class="cursor-pointer flex items-center justify-between p-2.5 rounded-xl ${isMe ? 'bg-orange-950/25 border border-orange-500/40' : 'bg-zinc-950/80 border border-zinc-800/80'} hover:border-zinc-700 transition">
+                    <div class="flex items-center gap-2.5">
+                      <span class="text-sm w-5 text-center font-black">${medals[idx] || '#' + (idx + 1)}</span>
+                      ${renderAvatarBadge(m.avatarId || 'shiba', 'w-9 h-9')}
+                      <div>
+                        <p class="text-xs font-extrabold text-white">${escapeHtml(m.name)} ${isMe ? '<span class="text-[10px] text-orange-400">(You)</span>' : ''}</p>
+                        <p class="text-[11px] text-zinc-400">${m.rankIcon || '🔩'} ${escapeHtml(m.rankName || 'Iron Novice')} • ${m.weeklyWorkouts || 0} this wk</p>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-xs font-black text-orange-400">${(m.xp || 0).toLocaleString()} XP</p>
+                      <p class="text-[10px] text-zinc-500">${timeAgo(m.updatedAt)}</p>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            ${mySquadPos >= 0 ? `<p class="text-[11px] text-zinc-400 mt-2.5 text-center">You are currently ranked <span class="text-white font-bold">#${mySquadPos + 1}</span> of ${sortedSquad.length} in ${escapeHtml(appState.squadCode)}</p>` : ''}
+          ` : `
+            <div class="rounded-xl bg-zinc-950/90 border border-dashed border-zinc-800 p-3.5 text-center">
+              <p class="text-xs text-zinc-300 font-semibold">Want to see your friends' live ranks, animal avatars, PRs & workouts?</p>
+              <p class="text-[11px] text-zinc-400 mt-1">Connect your free Firebase Squad database in 60 seconds.</p>
+              <button onclick="switchTab('squad')" class="mt-2.5 px-4 py-2 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-300 text-xs font-extrabold hover:bg-orange-500/30 transition">
+                Set Up Live Squad Sync
+              </button>
+            </div>
+          `}
+        </section>
+      `;
+    }
+
+    /* ------------------------- TAB 2: WORKOUT SPLITS ------------------------- */
+    function renderWorkoutsTab() {
+      return `
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-black text-white">Commercial Gym Splits</h2>
+            <p class="text-xs text-zinc-400">Select a program, customize from ${getAllExercises().length} exercises, or start a day</p>
+          </div>
+          <button onclick="openCustomExerciseModal()" class="px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 text-xs font-bold text-orange-400 hover:bg-zinc-850 transition shrink-0">
+            + Exercise
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          ${appState.splits.map(split => {
+            const isSelected = split.id === appState.activeSplitId;
+            return `
+              <div class="rounded-2xl bg-zinc-900 border ${isSelected ? 'border-orange-500/60 shadow-lg shadow-orange-500/5' : 'border-zinc-800'} p-4 transition">
+                <div class="flex items-start justify-between gap-2">
+                  <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <h3 class="text-base font-extrabold text-white">${escapeHtml(split.name)}</h3>
+                      <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-amber-950 text-amber-300 border border-amber-500/30">${escapeHtml(split.badge || split.daysPerWeek + ' Days')}</span>
+                      ${isSelected ? '<span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-orange-500/20 text-orange-300 border border-orange-500/40">Active Split</span>' : ''}
+                    </div>
+                    <p class="text-xs text-zinc-400 mt-1">${escapeHtml(split.description)}</p>
+                  </div>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    ${!isSelected ? `<button onclick="setActiveSplit('${split.id}')" class="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-[11px] font-bold text-zinc-200">Activate</button>` : ''}
+                    <button onclick="cloneSplit('${split.id}')" title="Clone & Customize" class="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold">
+                      Clone
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Days inside this split -->
+                <div class="mt-3 space-y-2">
+                  ${split.days.map(day => `
+                    <div class="rounded-xl bg-zinc-950/90 border border-zinc-800/90 p-3 flex items-center justify-between gap-2">
+                      <div class="min-w-0">
+                        <p class="text-xs font-extrabold text-zinc-100 truncate">${escapeHtml(day.name)}</p>
+                        <p class="text-[11px] text-zinc-400 truncate mt-0.5">
+                          ${day.exercises.map(e => getExerciseById(e.exerciseId).name).join(' • ')}
+                        </p>
+                      </div>
+                      <div class="flex items-center gap-1.5 shrink-0">
+                        <button onclick="openEditSplitDayModal('${split.id}', '${day.id}')" class="px-2.5 py-1.5 rounded-lg bg-zinc-900 border border-zinc-700 text-[11px] font-bold text-zinc-300 hover:text-white">
+                          Edit
+                        </button>
+                        <button onclick="startWorkoutSession('${split.id}', '${day.id}')" class="px-3 py-1.5 rounded-lg bg-orange-500 text-zinc-950 text-xs font-black hover:bg-orange-400 transition">
+                          Start
+                        </button>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function setActiveSplit(splitId) {
+      appState.activeSplitId = splitId;
+      saveState(false);
+      showToast('Active split updated!', 'orange');
+      renderApp();
+    }
+
+    function cloneSplit(splitId) {
+      const orig = appState.splits.find(s => s.id === splitId);
+      if (!orig) return;
+      const copy = JSON.parse(JSON.stringify(orig));
+      copy.id = 'split_custom_' + Date.now();
+      copy.name = orig.name + ' (Custom)';
+      copy.badge = 'Custom';
+      appState.splits.unshift(copy);
+      appState.activeSplitId = copy.id;
+      saveState(false);
+      showToast('Cloned split! Tap Edit on any day to customize.', 'amber');
+      renderApp();
+    }
+
+    /* ------------------------- TAB 3: CLOUD SQUAD & LEADERBOARD ------------------------- */
+    function renderSquadTab() {
+      const sortedMembers = [...cloudState.members].sort((a, b) => {
+        if (squadSortBy === 'weeklyVolume') return (b.weeklyVolume || 0) - (a.weeklyVolume || 0);
+        if (squadSortBy === 'weeklyWorkouts') return (b.weeklyWorkouts || 0) - (a.weeklyWorkouts || 0);
+        if (squadSortBy === 'prCount') return (b.prCount || 0) - (a.prCount || 0);
+        return (b.xp || 0) - (a.xp || 0);
+      });
+
+      const top3 = sortedMembers.slice(0, 3);
+
+      return `
+        <!-- SQUAD HEADER & IDENTITY BAR -->
+        <section class="rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/25 border border-zinc-800 p-4">
+          <div class="flex items-start justify-between gap-2">
+            <div class="flex items-center gap-3">
+              <button onclick="openAvatarPickerModal()" title="Change Animal Avatar">
+                ${renderAvatarBadge(appState.avatarId, 'w-12 h-12')}
+              </button>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h2 class="text-lg font-black text-white">Squad Leaderboard</h2>
+                  <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${cloudState.connected ? 'bg-orange-500/20 text-orange-300 border border-orange-500/40' : 'bg-zinc-800 text-zinc-400 border border-zinc-700'}">
+                    ${cloudState.connected ? '● LIVE SYNC' : '○ OFFLINE'}
+                  </span>
+                </div>
+                <p class="text-xs text-zinc-400 mt-0.5">
+                  Room: <span class="text-amber-400 font-extrabold">${escapeHtml(appState.squadCode)}</span> • <span class="text-white font-bold">${escapeHtml(appState.athleteName)}</span>
+                </p>
+              </div>
+            </div>
+            <button onclick="openSquadSetupModal()" class="px-3 py-1.5 rounded-xl bg-zinc-850 hover:bg-zinc-800 border border-zinc-700 text-xs font-bold text-zinc-200 transition shrink-0">
+              ${cloudState.connected ? 'Settings' : 'Connect'}
+            </button>
+          </div>
+
+          <!-- Action Buttons Row -->
+          <div class="grid grid-cols-2 gap-2 mt-3.5">
+            <button onclick="shareSquadInvite()" class="py-2.5 px-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 text-xs font-black flex items-center justify-center gap-1.5 shadow-md shadow-orange-500/15 hover:brightness-110 transition">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+              Invite Friends Link
+            </button>
+            <button onclick="manualCloudSync()" class="py-2.5 px-3 rounded-xl bg-zinc-850 hover:bg-zinc-800 border border-zinc-700 text-xs font-extrabold text-white flex items-center justify-center gap-1.5 transition">
+              <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+              ${cloudState.connected ? 'Sync Now' : 'Setup Firebase'}
+            </button>
+          </div>
+        </section>
+
+        ${!cloudState.connected ? `
+          <!-- ONBOARDING CARD WHEN FIREBASE IS NOT CONFIGURED YET -->
+          <section class="rounded-2xl bg-zinc-900 border border-orange-500/30 p-5 space-y-3">
+            <div class="flex items-center gap-3">
+              <div class="w-11 h-11 rounded-2xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-2xl">☁️</div>
+              <div>
+                <h3 class="text-base font-black text-white">Enable Automatic Friend Sync</h3>
+                <p class="text-xs text-zinc-400">Free Google Firebase Firestore backend — updates live whenever any friend finishes a workout.</p>
+              </div>
+            </div>
+            <ol class="text-xs text-zinc-300 space-y-2 bg-zinc-950/90 border border-zinc-800 rounded-xl p-3.5 list-decimal list-inside">
+              <li>Go to <span class="text-amber-400 font-bold">console.firebase.google.com</span> and create a free project.</li>
+              <li>Enable <span class="text-orange-400 font-bold">Authentication → Anonymous</span> and <span class="text-orange-400 font-bold">Firestore Database</span> (Start in test mode).</li>
+              <li>Copy your <code class="text-amber-300">firebaseConfig</code> snippet from Project Settings and paste it below!</li>
+            </ol>
+            <button onclick="openSquadSetupModal()" class="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 font-black text-sm shadow-lg">
+              Paste Firebase Config & Join Squad
+            </button>
+          </section>
+        ` : `
+          <!-- LEADERBOARD SORT FILTER TABS -->
+          <div class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            ${[
+              { id: 'xp', label: '⚡ Total XP' },
+              { id: 'weeklyVolume', label: '🏋️ Weekly Volume' },
+              { id: 'weeklyWorkouts', label: '🔥 Weekly Sessions' },
+              { id: 'prCount', label: '🏆 Total PRs' }
+            ].map(tab => `
+              <button onclick="setSquadSort('${tab.id}')" class="px-3 py-1.5 rounded-xl text-xs font-extrabold whitespace-nowrap border transition ${squadSortBy === tab.id ? 'bg-orange-500/20 border-orange-500/50 text-orange-300' : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:text-white'}">
+                ${tab.label}
+              </button>
+            `).join('')}
+          </div>
+
+          <!-- TOP 3 PODIUM SHOWCASE -->
+          ${top3.length > 0 ? `
+            <section class="grid grid-cols-3 gap-2 items-end pt-2">
+              ${[1, 0, 2].map(podiumIdx => {
+                const m = top3[podiumIdx];
+                if (!m) return `<div></div>`;
+                const isFirst = podiumIdx === 0;
+                const isSecond = podiumIdx === 1;
+                const crown = isFirst ? '👑' : isSecond ? '🥈' : '🥉';
+                const borderCol = isFirst ? 'border-amber-400/60 bg-gradient-to-b from-orange-500/20 to-zinc-900' : isSecond ? 'border-zinc-500/40 bg-zinc-900' : 'border-orange-800/50 bg-zinc-900';
+                const heightCls = isFirst ? 'py-4' : 'py-3';
+                const metricVal = squadSortBy === 'weeklyVolume' ? `${((m.weeklyVolume || 0)/1000).toFixed(1)}t`
+                  : squadSortBy === 'weeklyWorkouts' ? `${m.weeklyWorkouts || 0} sess`
+                  : squadSortBy === 'prCount' ? `${m.prCount || 0} PRs`
+                  : `${(m.xp || 0).toLocaleString()} XP`;
+
+                return `
+                  <div onclick="openMemberComparisonModal('${m.athleteId}')" class="cursor-pointer rounded-2xl border ${borderCol} ${heightCls} px-2 text-center transition hover:scale-[1.02]">
+                    <div class="text-xl mb-1">${crown}</div>
+                    <div class="flex justify-center">
+                      ${renderAvatarBadge(m.avatarId || 'shiba', 'w-12 h-12')}
+                    </div>
+                    <p class="text-xs font-black text-white truncate mt-1.5">${escapeHtml(m.name)}</p>
+                    <p class="text-[10px] text-zinc-400 truncate">${escapeHtml(m.rankName || 'Iron Novice')}</p>
+                    <p class="text-xs font-black ${isFirst ? 'text-amber-300' : 'text-orange-400'} mt-1">${metricVal}</p>
+                  </div>
+                `;
+              }).join('')}
+            </section>
+          ` : ''}
+
+          <!-- FULL SQUAD MEMBER CARDS -->
+          <section class="space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-extrabold uppercase tracking-wider text-zinc-400">All Squad Athletes (${sortedMembers.length})</h3>
+              <span class="text-[11px] text-zinc-500">Tap athlete to compare</span>
+            </div>
+
+            ${sortedMembers.map((m, idx) => {
+              const isMe = m.athleteId === appState.athleteId;
+              const lifts = Array.isArray(m.topLifts) ? m.topLifts : [];
+              return `
+                <div onclick="openMemberComparisonModal('${m.athleteId}')" class="cursor-pointer rounded-2xl bg-zinc-900 border ${isMe ? 'border-orange-500/50' : 'border-zinc-800'} hover:border-zinc-700 p-3.5 transition">
+                  <div class="flex items-start justify-between gap-2">
+                    <div class="flex items-center gap-3">
+                      <div class="relative">
+                        ${renderAvatarBadge(m.avatarId || 'shiba', 'w-11 h-11')}
+                        <span class="absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full bg-zinc-950 border border-zinc-700 flex items-center justify-center font-black text-[10px] ${idx === 0 ? 'text-amber-400' : idx === 1 ? 'text-zinc-300' : idx === 2 ? 'text-orange-400' : 'text-zinc-500'}">
+                          #${idx + 1}
+                        </span>
+                      </div>
+                      <div>
+                        <div class="flex items-center gap-1.5">
+                          <span class="text-sm font-black text-white">${escapeHtml(m.name)}</span>
+                          ${isMe ? '<span class="px-1.5 py-0.5 rounded text-[9px] font-black bg-orange-500/20 text-orange-300">YOU</span>' : ''}
+                        </div>
+                        <p class="text-xs font-semibold text-amber-400">${m.rankIcon || '🔩'} ${escapeHtml(m.rankName || 'Iron Novice')}</p>
+                      </div>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-sm font-black text-orange-400">${(m.xp || 0).toLocaleString()} XP</p>
+                      <p class="text-[10px] text-zinc-400">Active ${timeAgo(m.updatedAt)}</p>
+                    </div>
+                  </div>
+
+                  <!-- Mini Progress Bar -->
+                  <div class="mt-2.5 w-full h-1.5 rounded-full bg-zinc-950 overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-orange-500 to-amber-400" style="width: ${m.rankProgressPct || 10}%"></div>
+                  </div>
+
+                  <!-- Stats & Top Lifts Pills -->
+                  <div class="mt-2.5 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                    <div class="flex items-center gap-2 text-zinc-300 font-semibold">
+                      <span>🔥 ${m.weeklyWorkouts || 0} wk</span>
+                      <span>•</span>
+                      <span>📦 ${((m.totalVolume || 0)/1000).toFixed(1)}t</span>
+                      <span>•</span>
+                      <span>🏆 ${m.prCount || 0} PRs</span>
+                      ${m.bodyWeight ? `<span>•</span><span>⚖️ ${m.bodyWeight}kg</span>` : ''}
+                    </div>
+                    <span class="text-[10px] text-zinc-500 truncate max-w-[150px]">Last: ${escapeHtml(m.lastWorkoutName || '—')}</span>
+                  </div>
+
+                  ${lifts.length > 0 ? `
+                    <div class="mt-2 pt-2 border-t border-zinc-800/80 flex flex-wrap gap-1.5">
+                      ${lifts.map(l => `
+                        <span class="px-2 py-0.5 rounded-md bg-zinc-950 border border-zinc-800 text-[10px] font-bold text-zinc-300">
+                          ${escapeHtml(l.name)}: <span class="text-amber-300">${l.weight}kg×${l.reps}</span>
+                        </span>
+                      `).join('')}
+                    </div>
+                  ` : ''}
+                </div>
+              `;
+            }).join('')}
+          </section>
+
+          <!-- LIVE SQUAD ACTIVITY FEED & FIST BUMPS -->
+          <section class="rounded-2xl bg-zinc-900 border border-zinc-800 p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <h3 class="text-sm font-black text-white">Live Squad Activity Feed</h3>
+                <p class="text-[11px] text-zinc-400">Send a Fist Bump 👊 when your friends crush a session</p>
+              </div>
+              <span class="text-xs font-bold text-orange-400">${cloudState.feed.length} recent</span>
+            </div>
+
+            ${cloudState.feed.length === 0 ? `
+              <p class="text-xs text-zinc-500 text-center py-4">No squad activity logged yet. Complete a workout or claim a quest to appear here live!</p>
+            ` : `
+              <div class="space-y-2.5">
+                ${cloudState.feed.map(evt => {
+                  const bumped = Array.isArray(evt.kudosBy) && evt.kudosBy.includes(appState.athleteId);
+                  return `
+                    <div class="rounded-xl bg-zinc-950/90 border border-zinc-800/90 p-3 flex items-start justify-between gap-2.5">
+                      <div class="flex items-start gap-2.5 min-w-0">
+                        ${renderAvatarBadge(evt.avatarId || 'shiba', 'w-9 h-9')}
+                        <div class="min-w-0">
+                          <div class="flex items-center gap-1.5">
+                            <span class="text-xs font-extrabold text-white">${escapeHtml(evt.athleteName)}</span>
+                            <span class="text-xs">${evt.rankIcon || '💪'}</span>
+                            <span class="text-[10px] text-zinc-500">• ${timeAgo(evt.createdAt)}</span>
+                          </div>
+                          <p class="text-xs text-zinc-300 mt-0.5">${escapeHtml(evt.message)}</p>
+                          ${evt.meta ? `<p class="text-[11px] font-semibold text-orange-400 mt-0.5">${escapeHtml(evt.meta)}</p>` : ''}
+                        </div>
+                      </div>
+                      <button onclick="toggleFeedKudos('${evt.id}')" class="shrink-0 px-2.5 py-1.5 rounded-xl border text-xs font-black flex items-center gap-1 transition active:scale-95 ${bumped ? 'bg-orange-500/20 border-orange-400/60 text-orange-300' : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:text-white'}">
+                        <span>👊</span>
+                        <span>${evt.kudosCount || 0}</span>
+                      </button>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
+          </section>
+        `}
+      `;
+    }
+
+    function setSquadSort(sortKey) {
+      squadSortBy = sortKey;
+      renderApp();
+    }
+
+    function manualCloudSync() {
+      if (!cloudState.connected) {
+        openSquadSetupModal();
+        return;
+      }
+      syncMemberProfileToCloud();
+      showToast('Synced your latest rank & stats to Squad!', 'orange');
+    }
+
+    function shareSquadInvite() {
+      const baseUrl = window.location.href.split('?')[0];
+      const inviteUrl = `${baseUrl}?squad=${encodeURIComponent(appState.squadCode)}`;
+      const msg = `Join my IronPulse Gym Squad (${appState.squadCode}) so we can track each other's ranks, PRs & workouts live! 💪\n${inviteUrl}`;
+      copyTextFallback(msg, `Copied Squad Invite Link for ${appState.squadCode}!`);
+    }
+
+    /* ------------------------- TAB 4: RANKS & QUESTS ------------------------- */
+    function renderRanksTab() {
+      const xp = calculateTotalXP();
+      const { current, next, progressPct } = getRankForXP(xp);
+
+      return `
+        <!-- CURRENT RANK CARD -->
+        <section class="rounded-2xl bg-gradient-to-br from-zinc-900 to-zinc-850 border border-zinc-800 p-4">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-14 h-14 rounded-2xl bg-gradient-to-br ${current.gradient} flex items-center justify-center text-3xl shadow-lg">
+                ${current.icon}
+              </div>
+              <div>
+                <p class="text-xs font-bold uppercase tracking-wider ${current.color}">Tier ${current.tier} Athlete</p>
+                <h2 class="text-xl font-black text-white">${current.name}</h2>
+                <p class="text-xs text-zinc-400">${xp.toLocaleString()} XP Earned</p>
+              </div>
+            </div>
+            <button onclick="openShareRankModal()" class="px-3 py-2 rounded-xl bg-orange-500/20 border border-orange-500/40 text-orange-300 text-xs font-extrabold">
+              Share Card
+            </button>
+          </div>
+          <div class="mt-4">
+            <div class="flex justify-between text-xs font-bold mb-1">
+              <span class="text-zinc-400">${next ? `Next: ${next.name}` : 'Max Tier Reached'}</span>
+              <span class="text-orange-400">${progressPct}%</span>
+            </div>
+            <div class="w-full h-2.5 rounded-full bg-zinc-950 overflow-hidden">
+              <div class="h-full bg-gradient-to-r from-orange-500 to-amber-400" style="width: ${progressPct}%"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ACTIVE QUESTS -->
+        <section class="space-y-2.5">
+          <h3 class="text-sm font-black text-white">Athlete Quests (Claim XP)</h3>
+          ${QUEST_DEFINITIONS.map(q => {
+            const claimed = (appState.claimedQuests || []).includes(q.id);
+            const completed = q.check(appState);
+            return `
+              <div class="rounded-2xl bg-zinc-900 border ${completed && !claimed ? 'border-orange-500/50' : 'border-zinc-800'} p-3.5 flex items-center justify-between gap-3">
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-zinc-800 text-amber-300">${q.category}</span>
+                    <span class="text-xs font-extrabold text-white">${q.title}</span>
+                  </div>
+                  <p class="text-xs text-zinc-400 mt-1">${q.desc}</p>
+                </div>
+                <div class="shrink-0">
+                  ${claimed
+                    ? `<span class="px-3 py-1.5 rounded-xl bg-zinc-800 text-zinc-500 text-xs font-bold">Claimed</span>`
+                    : completed
+                      ? `<button onclick="claimQuest('${q.id}')" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 text-xs font-black shadow animate-pulse">+${q.xp} XP</button>`
+                      : `<span class="px-3 py-1.5 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 text-xs font-bold">+${q.xp} XP</span>`
+                  }
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </section>
+
+        <!-- ALL 8 RANK TIERS LADDER -->
+        <section class="space-y-2">
+          <h3 class="text-sm font-black text-white">8-Tier Athlete Ladder</h3>
+          ${RANK_TIERS.map(t => {
+            const unlocked = xp >= t.minXp;
+            return `
+              <div class="rounded-xl p-3 border flex items-center justify-between ${unlocked ? 'bg-zinc-900 border-zinc-700' : 'bg-zinc-950/60 border-zinc-800/60 opacity-60'}">
+                <div class="flex items-center gap-3">
+                  <span class="text-2xl">${t.icon}</span>
+                  <div>
+                    <p class="text-xs font-extrabold ${t.color}">Tier ${t.tier} • ${t.name}</p>
+                    <p class="text-[11px] text-zinc-400">${t.minXp.toLocaleString()} XP required</p>
+                  </div>
+                </div>
+                <span class="text-xs font-bold ${unlocked ? 'text-orange-400' : 'text-zinc-600'}">
+                  ${unlocked ? '✓ Unlocked' : 'Locked'}
+                </span>
+              </div>
+            `;
+          }).join('')}
+        </section>
+      `;
+    }
+
+    function claimQuest(questId) {
+      const quest = QUEST_DEFINITIONS.find(q => q.id === questId);
+      if (!quest || (appState.claimedQuests || []).includes(questId)) return;
+      if (!quest.check(appState)) return;
+
+      const oldRank = getRankForXP(calculateTotalXP()).current.tier;
+      appState.claimedQuests.push(questId);
+      appState.bonusXp = (appState.bonusXp || 0) + quest.xp;
+      const newRankObj = getRankForXP(calculateTotalXP()).current;
+
+      saveState(true);
+      showToast(`Quest Complete! +${quest.xp} XP`, 'orange');
+
+      postSquadActivityEvent({
+        type: 'quest',
+        message: `Completed quest "${quest.title}" (+${quest.xp} XP)!`,
+        meta: `Current Rank: ${newRankObj.name}`
+      });
+
+      if (newRankObj.tier > oldRank) {
+        openRankUpModal(newRankObj);
+      }
+      renderApp();
+    }
+
+    /* ------------------------- TAB 5: PROGRESS & CHARTS ------------------------- */
+    function renderProgressTab() {
+      const prs = computeAllPRs();
+      const prEntries = Object.entries(prs).sort((a, b) => b[1].e1rm - a[1].e1rm);
+
+      const muscleSets = { Chest: 0, Back: 0, Legs: 0, Shoulders: 0, Arms: 0, Core: 0 };
+      getWeeklyWorkouts().forEach(w => {
+        (w.exercises || []).forEach(ex => {
+          const m = getExerciseById(ex.exerciseId).muscle;
+          if (muscleSets[m] !== undefined) muscleSets[m] += (ex.sets || []).length;
+        });
+      });
+
+      const chartExId = appState.selectedChartExercise || 'ex_bench_flat';
+      const strengthPoints = [];
+      [...appState.workouts].sort((a, b) => a.date - b.date).forEach(w => {
+        const found = (w.exercises || []).find(e => e.exerciseId === chartExId);
+        if (found && found.sets && found.sets.length > 0) {
+          const max1rm = Math.max(...found.sets.map(s => calcE1RM(s.weight, s.reps)));
+          if (max1rm > 0) strengthPoints.push({ date: w.date, val: max1rm });
+        }
+      });
+
+      const recentBwLogs = [...(appState.bodyWeights || [])].reverse().slice(0, 5);
+
+      return `
+        <!-- BODY WEIGHT TRACKER (TOP PRIORITY) -->
+        <section class="rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-sm font-black text-white">⚖️ Body Weight Tracker</h3>
+              <p class="text-[11px] text-zinc-400">Latest: <span class="text-orange-400 font-bold">${appState.bodyWeights.length ? appState.bodyWeights[appState.bodyWeights.length - 1].weight + ' kg' : 'Not logged'}</span></p>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <input id="bwInput" type="number" step="0.1" placeholder="kg" class="w-20 px-2.5 py-1.5 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-orange-500 outline-none text-xs font-bold text-white" />
+              <button onclick="logBodyWeight('bwInput')" class="px-3 py-1.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 text-xs font-black">Log</button>
+            </div>
+          </div>
+          ${renderLineChartSVG(appState.bodyWeights.map(b => ({ date: b.date, val: b.weight })), '#f59e0b', 'kg')}
+          ${recentBwLogs.length > 0 ? `
+            <div class="mt-2.5 flex flex-wrap gap-1.5">
+              ${recentBwLogs.map((b, i) => `
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-950 border border-zinc-800 text-[11px] text-zinc-300">
+                  <span>${new Date(b.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}: <strong class="text-amber-300">${b.weight}kg</strong></span>
+                  <button onclick="deleteBodyWeightEntry(${appState.bodyWeights.length - 1 - i})" title="Delete entry" class="text-zinc-500 hover:text-rose-400 font-bold">×</button>
+                </span>
+              `).join('')}
+            </div>
+          ` : ''}
+        </section>
+
+        <!-- ESTIMATED 1RM STRENGTH PROGRESSION SVG -->
+        <section class="rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <div>
+              <h3 class="text-sm font-black text-white">Estimated 1RM Progression</h3>
+              <p class="text-[11px] text-zinc-400">Epley Formula Strength Curve</p>
+            </div>
+            <select onchange="changeChartExercise(this.value)" class="bg-zinc-950 border border-zinc-700 rounded-xl px-2.5 py-1.5 text-xs font-bold text-orange-300 max-w-[175px]">
+              ${getAllExercises().map(ex => `<option value="${ex.id}" ${ex.id === chartExId ? 'selected' : ''}>${escapeHtml(ex.name)}</option>`).join('')}
+            </select>
+          </div>
+          ${renderLineChartSVG(strengthPoints, '#f97316', 'kg')}
+        </section>
+
+        <!-- WEEKLY WORKING SETS BY MUSCLE GROUP -->
+        <section class="rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
+          <h3 class="text-sm font-black text-white mb-1">Weekly Working Sets by Muscle</h3>
+          <p class="text-[11px] text-zinc-400 mb-3">Optimal hypertrophy zone: 10–20 sets/week</p>
+          <div class="space-y-2.5">
+            ${Object.entries(muscleSets).map(([muscle, count]) => {
+              const pct = Math.min(100, Math.round((count / 20) * 100));
+              return `
+                <div>
+                  <div class="flex justify-between text-xs font-bold mb-1">
+                    <span class="text-zinc-300">${muscle}</span>
+                    <span class="text-orange-400">${count} sets</span>
+                  </div>
+                  <div class="w-full h-2 rounded-full bg-zinc-950 overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-orange-500 to-amber-400 rounded-full" style="width: ${pct}%"></div>
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </section>
+
+        <!-- PR TROPHY WALL -->
+        <section class="rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
+          <h3 class="text-sm font-black text-white mb-3">🏆 All-Time PR Trophy Wall (${prEntries.length})</h3>
+          ${prEntries.length === 0 ? `<p class="text-xs text-zinc-500">Complete sets to unlock estimated 1RM trophies.</p>` : `
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              ${prEntries.map(([id, data]) => `
+                <div class="rounded-xl bg-zinc-950 border border-zinc-800 p-3 flex items-center justify-between">
+                  <div class="min-w-0 pr-2">
+                    <p class="text-xs font-extrabold text-white truncate">${escapeHtml(getExerciseById(id).name)}</p>
+                    <p class="text-[11px] text-zinc-400">Best: ${data.weight}kg × ${data.reps}</p>
+                  </div>
+                  <div class="text-right shrink-0">
+                    <span class="px-2 py-1 rounded-lg bg-orange-500/15 border border-orange-500/30 text-orange-300 text-xs font-black">
+                      ${data.e1rm} kg
+                    </span>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          `}
+        </section>
+      `;
+    }
+
+    function changeChartExercise(exId) {
+      appState.selectedChartExercise = exId;
+      saveState(false);
+      renderApp();
+    }
+
+    function logBodyWeight(inputId = 'bwInput') {
+      const inp = document.getElementById(inputId);
+      const val = parseFloat(inp && inp.value);
+      if (!val || val < 25 || val > 350) {
+        showToast('Enter a valid weight in kg (e.g. 78.5)', 'amber');
+        return;
+      }
+      appState.bodyWeights.push({ date: Date.now(), weight: Math.round(val * 10) / 10 });
+      saveState(true);
+      showToast(`Logged body weight: ${val} kg`, 'orange');
+      renderApp();
+    }
+
+    function deleteBodyWeightEntry(idx) {
+      if (idx >= 0 && idx < appState.bodyWeights.length) {
+        appState.bodyWeights.splice(idx, 1);
+        saveState(true);
+        showToast('Removed weigh-in entry', 'amber');
+        renderApp();
+      }
+    }
+
+    function renderLineChartSVG(points, strokeColor, unit) {
+      if (!points || points.length === 0) {
+        return `<div class="h-32 rounded-xl bg-zinc-950/80 border border-dashed border-zinc-800 flex items-center justify-center text-xs text-zinc-500">Not enough data points yet</div>`;
+      }
+      const w = 360, h = 120, pad = 20;
+      const vals = points.map(p => p.val);
+      const minV = Math.min(...vals);
+      const maxV = Math.max(...vals);
+      const range = maxV - minV || 1;
+
+      const coords = points.map((p, idx) => {
+        const x = points.length === 1 ? w / 2 : pad + (idx / (points.length - 1)) * (w - pad * 2);
+        const y = h - pad - ((p.val - minV) / range) * (h - pad * 2);
+        return { x, y, val: p.val, date: p.date };
+      });
+
+      const pathD = coords.map((c, i) => `${i === 0 ? 'M' : 'L'} ${c.x.toFixed(1)} ${c.y.toFixed(1)}`).join(' ');
+
+      return `
+        <div class="rounded-xl bg-zinc-950 border border-zinc-800/80 p-2">
+          <svg viewBox="0 0 ${w} ${h}" class="w-full h-32 overflow-visible">
+            <path d="${pathD}" fill="none" stroke="${strokeColor}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+            ${coords.map(c => `
+              <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="4" fill="#09090b" stroke="${strokeColor}" stroke-width="2.5" />
+              <text x="${c.x.toFixed(1)}" y="${(c.y - 8).toFixed(1)}" text-anchor="middle" fill="#e4e4e7" font-size="9" font-weight="700">${c.val}${unit}</text>
+            `).join('')}
+          </svg>
+        </div>
+      `;
+    }
+
+    /* ------------------------- TAB 6: WORKOUT HISTORY ------------------------- */
+    function renderHistoryTab() {
+      const sorted = [...appState.workouts].sort((a, b) => b.date - a.date);
+      return `
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-black text-white">Workout History (${sorted.length})</h2>
+            <p class="text-xs text-zinc-400">Complete log of your commercial gym sessions</p>
+          </div>
+        </div>
+
+        ${sorted.length === 0 ? `
+          <div class="rounded-2xl bg-zinc-900 border border-zinc-800 p-8 text-center">
+            <p class="text-sm font-bold text-zinc-300">No workouts logged yet</p>
+            <p class="text-xs text-zinc-500 mt-1">Head to Workouts to launch your first session!</p>
+          </div>
+        ` : `
+          <div class="space-y-3">
+            ${sorted.map(w => {
+              const vol = getWorkoutVolume(w);
+              const sets = getWorkoutSetsCount(w);
+              const dateStr = new Date(w.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+              return `
+                <div class="rounded-2xl bg-zinc-900 border border-zinc-800 p-4">
+                  <div class="flex items-start justify-between gap-2">
+                    <div>
+                      <span class="text-[11px] font-bold text-orange-400">${dateStr} • ${Math.round((w.durationSec || 0) / 60)} min</span>
+                      <h3 class="text-base font-extrabold text-white mt-0.5">${escapeHtml(w.dayName)}</h3>
+                      <p class="text-xs text-zinc-400">${escapeHtml(w.splitName)}</p>
+                    </div>
+                    <div class="text-right">
+                      <p class="text-sm font-black text-amber-400">${vol.toLocaleString()} kg</p>
+                      <p class="text-[11px] text-zinc-400">${sets} sets</p>
+                    </div>
+                  </div>
+                  <div class="mt-3 pt-2.5 border-t border-zinc-800/80 space-y-1">
+                    ${(w.exercises || []).map(ex => `
+                      <div class="flex justify-between text-xs">
+                        <span class="text-zinc-300 font-medium">${escapeHtml(getExerciseById(ex.exerciseId).name)}</span>
+                        <span class="text-zinc-400 font-bold">${(ex.sets || []).map(s => `${s.weight}×${s.reps}`).join(', ')}</span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `}
+      `;
+    }
+
+    /**
+     * ============================================================================
+     * 10. ACTIVE WORKOUT LOGGER & AUTO REST TIMER
+     * ============================================================================
+     */
+    function startWorkoutSession(splitId, dayId) {
+      const split = appState.splits.find(s => s.id === splitId);
+      const day = split && split.days.find(d => d.id === dayId);
+      if (!split || !day) return;
+
+      activeSession = {
+        splitId: split.id,
+        splitName: split.name,
+        dayId: day.id,
+        dayName: day.name,
+        startTime: Date.now(),
+        elapsedSec: 0,
+        exercises: day.exercises.map(item => ({
+          exerciseId: item.exerciseId,
+          targetReps: item.targetReps,
+          restSec: item.restSec || 90,
+          sets: Array.from({ length: item.targetSets || 3 }, () => ({
+            weight: '',
+            reps: '',
+            rpe: '8',
+            done: false
+          }))
+        }))
+      };
+
+      if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+      sessionTimerInterval = setInterval(() => {
+        if (!activeSession) return;
+        activeSession.elapsedSec = Math.floor((Date.now() - activeSession.startTime) / 1000);
+        const timerEl = document.getElementById('modalSessionClock');
+        if (timerEl) timerEl.textContent = formatDuration(activeSession.elapsedSec);
+        updateActiveBanner();
+      }, 1000);
+
+      updateActiveBanner();
+      openActiveWorkoutModal();
+    }
+
+    function updateActiveBanner() {
+      const banner = document.getElementById('activeWorkoutBanner');
+      if (!banner) return;
+      if (!activeSession) {
+        banner.classList.add('hidden');
+        return;
+      }
+      banner.classList.remove('hidden');
+      const doneSets = activeSession.exercises.reduce((acc, ex) => acc + ex.sets.filter(s => s.done).length, 0);
+      document.getElementById('bannerWorkoutName').textContent = activeSession.dayName;
+      document.getElementById('bannerWorkoutStats').textContent = `${formatDuration(activeSession.elapsedSec)} • ${doneSets} sets completed`;
+    }
+
+    function openActiveWorkoutModal() {
+      if (!activeSession) return;
+      const root = document.getElementById('modalRoot');
+      root.innerHTML = `
+        <div class="fixed inset-0 z-40 bg-zinc-950/95 backdrop-blur-md overflow-y-auto">
+          <div class="max-w-2xl mx-auto min-h-screen flex flex-col p-4 pb-28">
+            <!-- Modal Top Bar -->
+            <div class="flex items-center justify-between gap-2 pb-3 border-b border-zinc-800">
+              <div>
+                <span class="text-[11px] font-extrabold uppercase tracking-wider text-orange-400">Live Workout Session</span>
+                <h2 class="text-base font-black text-white">${escapeHtml(activeSession.dayName)}</h2>
+              </div>
+              <div class="flex items-center gap-2">
+                <span id="modalSessionClock" class="px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-700 font-mono text-sm font-black text-amber-400">
+                  ${formatDuration(activeSession.elapsedSec)}
+                </span>
+                <button onclick="minimizeWorkoutModal()" class="px-3 py-1.5 rounded-xl bg-zinc-850 text-xs font-bold text-zinc-300">
+                  Hide
+                </button>
+              </div>
+            </div>
+
+            <!-- REST TIMER WIDGET -->
+            <div class="mt-3 rounded-2xl bg-zinc-900 border border-zinc-800 p-3 flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center text-orange-400 font-black text-xs">
+                  ⏱️
+                </div>
+                <div>
+                  <p class="text-[11px] font-bold text-zinc-400">Rest Timer</p>
+                  <p id="restTimerClock" class="text-base font-black ${restTimerState.active ? 'text-amber-400' : 'text-white'}">
+                    ${restTimerState.active ? formatDuration(restTimerState.remaining) : 'Ready'}
+                  </p>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                ${[60, 90, 120, 180].map(sec => `
+                  <button onclick="startRestTimer(${sec})" class="px-2.5 py-1.5 rounded-lg bg-zinc-850 hover:bg-zinc-800 text-xs font-extrabold text-zinc-200">
+                    ${sec}s
+                  </button>
+                `).join('')}
+                ${restTimerState.active ? `<button onclick="stopRestTimer()" class="px-2.5 py-1.5 rounded-lg bg-rose-500/20 text-rose-300 text-xs font-bold">Stop</button>` : ''}
+              </div>
+            </div>
+
+            <!-- EXERCISES LIST -->
+            <div class="mt-4 space-y-4 flex-1">
+              ${activeSession.exercises.map((item, exIdx) => {
+                const exInfo = getExerciseById(item.exerciseId);
+                const lastPerf = getLastExercisePerformance(item.exerciseId);
+                return `
+                  <div class="rounded-2xl bg-zinc-900 border border-zinc-800 p-3.5">
+                    <div class="flex items-start justify-between gap-2">
+                      <div>
+                        <h3 class="text-sm font-black text-white">${escapeHtml(exInfo.name)}</h3>
+                        <p class="text-[11px] text-zinc-400 mt-0.5">
+                          Target: <span class="text-orange-400 font-bold">${item.targetReps} reps</span>
+                          ${lastPerf ? ` • <span class="text-amber-400 font-bold">Last: ${lastPerf}</span>` : ''}
+                        </p>
+                        ${exInfo.cue ? `<p class="text-[11px] text-zinc-500 italic mt-0.5">"${escapeHtml(exInfo.cue)}"</p>` : ''}
+                      </div>
+                      <button onclick="openSwapExerciseModal(${exIdx})" class="px-2.5 py-1 rounded-lg bg-zinc-850 hover:bg-zinc-800 text-[11px] font-bold text-amber-300 shrink-0">
+                        ⇄ Swap
+                      </button>
+                    </div>
+
+                    <!-- Sets Table -->
+                    <div class="mt-3 space-y-2">
+                      <div class="grid grid-cols-12 gap-1.5 text-[10px] font-extrabold uppercase text-zinc-500 px-1">
+                        <span class="col-span-2">Set</span>
+                        <span class="col-span-4">Weight (kg)</span>
+                        <span class="col-span-3">Reps</span>
+                        <span class="col-span-3 text-right">Done</span>
+                      </div>
+                      ${item.sets.map((s, setIdx) => `
+                        <div class="grid grid-cols-12 gap-1.5 items-center ${s.done ? 'opacity-75' : ''}">
+                          <span class="col-span-2 text-xs font-black text-zinc-400 pl-1">#${setIdx + 1}</span>
+                          <input type="number" step="0.5" value="${s.weight}" placeholder="kg"
+                            onchange="updateActiveSet(${exIdx}, ${setIdx}, 'weight', this.value)"
+                            class="col-span-4 px-2.5 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-bold text-white" />
+                          <input type="number" value="${s.reps}" placeholder="reps"
+                            onchange="updateActiveSet(${exIdx}, ${setIdx}, 'reps', this.value)"
+                            class="col-span-3 px-2.5 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-bold text-white" />
+                          <div class="col-span-3 flex justify-end">
+                            <button onclick="toggleActiveSetDone(${exIdx}, ${setIdx})" class="w-full py-2 rounded-xl font-black text-xs transition ${s.done ? 'bg-orange-500 text-zinc-950' : 'bg-zinc-850 text-zinc-300 hover:bg-zinc-800'}">
+                              ${s.done ? '✓ Logged' : 'Log'}
+                            </button>
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+
+                    <button onclick="addActiveSet(${exIdx})" class="mt-2.5 w-full py-1.5 rounded-xl bg-zinc-950 border border-dashed border-zinc-700 text-[11px] font-bold text-zinc-400 hover:text-white">
+                      + Add Set
+                    </button>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <!-- FINISH / CANCEL FOOTER -->
+            <div class="mt-6 grid grid-cols-3 gap-2">
+              <button onclick="cancelWorkoutSession()" class="col-span-1 py-3.5 rounded-xl bg-zinc-900 border border-rose-500/40 text-rose-400 text-xs font-extrabold">
+                Discard
+              </button>
+              <button onclick="finishWorkoutSession()" class="col-span-2 py-3.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 text-sm font-black shadow-lg">
+                Finish & Sync Workout
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function minimizeWorkoutModal() {
+      document.getElementById('modalRoot').innerHTML = '';
+      updateActiveBanner();
+    }
+
+    function updateActiveSet(exIdx, setIdx, field, value) {
+      if (!activeSession) return;
+      activeSession.exercises[exIdx].sets[setIdx][field] = value;
+    }
+
+    function toggleActiveSetDone(exIdx, setIdx) {
+      if (!activeSession) return;
+      const setObj = activeSession.exercises[exIdx].sets[setIdx];
+      setObj.done = !setObj.done;
+      if (setObj.done) {
+        startRestTimer(activeSession.exercises[exIdx].restSec || 90);
+      }
+      updateActiveBanner();
+      openActiveWorkoutModal();
+    }
+
+    function addActiveSet(exIdx) {
+      if (!activeSession) return;
+      const prev = activeSession.exercises[exIdx].sets.slice(-1)[0] || { weight: '', reps: '', rpe: '8' };
+      activeSession.exercises[exIdx].sets.push({ weight: prev.weight, reps: prev.reps, rpe: '8', done: false });
+      openActiveWorkoutModal();
+    }
+
+    function startRestTimer(seconds) {
+      stopRestTimer();
+      restTimerState.remaining = seconds;
+      restTimerState.total = seconds;
+      restTimerState.active = true;
+      const clock = document.getElementById('restTimerClock');
+      if (clock) {
+        clock.textContent = formatDuration(restTimerState.remaining);
+        clock.classList.add('text-amber-400');
+      }
+      restTimerState.interval = setInterval(() => {
+        restTimerState.remaining--;
+        const el = document.getElementById('restTimerClock');
+        if (el) el.textContent = formatDuration(Math.max(0, restTimerState.remaining));
+        if (restTimerState.remaining <= 0) {
+          stopRestTimer();
+          playRestChime();
+          showToast('Rest complete — Next set!', 'amber');
+          if (document.getElementById('modalRoot').innerHTML !== '') openActiveWorkoutModal();
+        }
+      }, 1000);
+    }
+
+    function stopRestTimer() {
+      if (restTimerState.interval) clearInterval(restTimerState.interval);
+      restTimerState.active = false;
+      restTimerState.interval = null;
+    }
+
+    function cancelWorkoutSession() {
+      stopRestTimer();
+      if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+      activeSession = null;
+      document.getElementById('modalRoot').innerHTML = '';
+      updateActiveBanner();
+      showToast('Session discarded', 'amber');
+    }
+
+    async function finishWorkoutSession() {
+      if (!activeSession) return;
+
+      const cleanedExercises = [];
+      activeSession.exercises.forEach(ex => {
+        const validSets = ex.sets
+          .filter(s => (parseFloat(s.weight) > 0 && parseInt(s.reps, 10) > 0))
+          .map(s => ({
+            weight: parseFloat(s.weight),
+            reps: parseInt(s.reps, 10),
+            rpe: parseFloat(s.rpe) || 8
+          }));
+        if (validSets.length > 0) {
+          cleanedExercises.push({ exerciseId: ex.exerciseId, sets: validSets });
+        }
+      });
+
+      if (cleanedExercises.length === 0) {
+        showToast('Log at least 1 set with weight & reps before finishing!', 'amber');
+        return;
+      }
+
+      const oldPRs = computeAllPRs();
+      const oldRankTier = getRankForXP(calculateTotalXP()).current.tier;
+
+      const completedWorkout = {
+        id: 'w_' + Date.now(),
+        splitName: activeSession.splitName,
+        dayName: activeSession.dayName,
+        date: Date.now(),
+        durationSec: activeSession.elapsedSec || 1800,
+        exercises: cleanedExercises
+      };
+
+      appState.workouts.push(completedWorkout);
+
+      const newPRs = computeAllPRs();
+      const brokenPrNames = [];
+      Object.entries(newPRs).forEach(([exId, data]) => {
+        if (!oldPRs[exId] || data.e1rm > oldPRs[exId].e1rm) {
+          brokenPrNames.push(`${getExerciseById(exId).name} (${data.weight}kg×${data.reps})`);
+        }
+      });
+
+      const vol = getWorkoutVolume(completedWorkout);
+      const setsCount = getWorkoutSetsCount(completedWorkout);
+      const newRankObj = getRankForXP(calculateTotalXP()).current;
+
+      stopRestTimer();
+      if (sessionTimerInterval) clearInterval(sessionTimerInterval);
+      activeSession = null;
+      document.getElementById('modalRoot').innerHTML = '';
+      updateActiveBanner();
+
+      saveState(true);
+      showToast(`Workout Saved! +${vol.toLocaleString()} kg volume`, 'orange');
+
+      await postSquadActivityEvent({
+        type: 'workout',
+        message: `Completed "${completedWorkout.dayName}" (${setsCount} sets • ${vol.toLocaleString()} kg total volume)`,
+        meta: brokenPrNames.length > 0 ? `🔥 NEW PR: ${brokenPrNames[0]}` : `${completedWorkout.splitName}`
+      });
+
+      if (newRankObj.tier > oldRankTier) {
+        await postSquadActivityEvent({
+          type: 'rankup',
+          message: `Promoted to Tier ${newRankObj.tier}: ${newRankObj.name}!`,
+          meta: `Total XP: ${calculateTotalXP().toLocaleString()}`
+        });
+        openRankUpModal(newRankObj);
+      }
+
+      renderApp();
+    }
+
+    /* ------------------------- LIVE EXERCISE SWAP MODAL ------------------------- */
+    function openSwapExerciseModal(exIdx) {
+      if (!activeSession) return;
+      const currentEx = getExerciseById(activeSession.exercises[exIdx].exerciseId);
+      const alternatives = getAllExercises().filter(e => e.muscle === currentEx.muscle && e.id !== currentEx.id);
+
+      const modal = document.createElement('div');
+      modal.id = 'swapSubModal';
+      modal.className = 'fixed inset-0 z-50 bg-zinc-950/90 flex items-end sm:items-center justify-center p-4';
+      modal.innerHTML = `
+        <div class="w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-700 p-4 space-y-3 pop-in">
+          <div class="flex items-center justify-between">
+            <div>
+              <span class="text-[10px] font-extrabold uppercase text-amber-400">Machine Busy? Swap Exercise</span>
+              <h3 class="text-sm font-black text-white">Alternatives for ${escapeHtml(currentEx.muscle)} (${alternatives.length})</h3>
+            </div>
+            <button onclick="document.getElementById('swapSubModal').remove()" class="text-zinc-400 hover:text-white text-sm font-bold px-2">✕</button>
+          </div>
+          <div class="max-h-72 overflow-y-auto space-y-1.5">
+            ${alternatives.map(alt => `
+              <button onclick="confirmSwapExercise(${exIdx}, '${alt.id}')" class="w-full text-left p-3 rounded-xl bg-zinc-950 hover:bg-zinc-850 border border-zinc-800 transition">
+                <p class="text-xs font-extrabold text-white">${escapeHtml(alt.name)}</p>
+                <p class="text-[11px] text-zinc-400">${escapeHtml(alt.equipment)} • ${escapeHtml(alt.cue)}</p>
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+    }
+
+    function confirmSwapExercise(exIdx, newExId) {
+      if (!activeSession) return;
+      activeSession.exercises[exIdx].exerciseId = newExId;
+      const sub = document.getElementById('swapSubModal');
+      if (sub) sub.remove();
+      openActiveWorkoutModal();
+      showToast(`Swapped to ${getExerciseById(newExId).name}`, 'amber');
+    }
+
+    /**
+     * ============================================================================
+     * 11. MODALS: ANIMAL AVATAR PICKER, SQUAD SETUP, COMPARISON, SETTINGS
+     * ============================================================================
+     */
+    function openAvatarPickerModal() {
+      document.getElementById('modalRoot').innerHTML = `
+        <div class="fixed inset-0 z-50 bg-zinc-950/90 backdrop-blur-sm overflow-y-auto flex items-center justify-center p-4">
+          <div class="w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-700 p-5 space-y-4 pop-in">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-orange-400">Athlete Mascot</span>
+                <h3 class="text-lg font-black text-white">Choose Your Gym Animal</h3>
+              </div>
+              <button onclick="closeModal()" class="p-1.5 rounded-lg bg-zinc-850 text-zinc-400 hover:text-white">✕</button>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 max-h-80 overflow-y-auto pr-1">
+              ${ANIMAL_AVATARS.map(av => {
+                const selected = appState.avatarId === av.id;
+                return `
+                  <button onclick="selectAnimalAvatar('${av.id}')" class="p-2 rounded-2xl border text-center transition flex flex-col items-center gap-1.5 ${selected ? 'bg-orange-500/20 border-orange-500 shadow-md shadow-orange-500/15' : 'bg-zinc-950 border-zinc-800 hover:border-zinc-700'}">
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br ${av.bg} p-1">
+                      ${av.svg}
+                    </div>
+                    <span class="text-[10px] font-extrabold leading-tight ${selected ? 'text-orange-300' : 'text-zinc-300'}">${escapeHtml(av.name)}</span>
+                  </button>
+                `;
+              }).join('')}
+            </div>
+
+            <button onclick="closeModal()" class="w-full py-2.5 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-xs font-extrabold text-white">
+              Done
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function selectAnimalAvatar(avatarId) {
+      appState.avatarId = avatarId;
+      saveState(true);
+      const av = getAvatarObj(avatarId);
+      showToast(`Avatar updated to ${av.name}!`, 'orange');
+      openAvatarPickerModal();
+      renderApp();
+    }
+
+    function openSquadSetupModal() {
+      const existingCfg = getStoredCloudConfig();
+      const cfgPreview = existingCfg ? JSON.stringify(existingCfg, null, 2) : '';
+
+      document.getElementById('modalRoot').innerHTML = `
+        <div class="fixed inset-0 z-50 bg-zinc-950/90 backdrop-blur-sm overflow-y-auto flex items-center justify-center p-4">
+          <div class="w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-700 p-5 space-y-4 pop-in">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-[10px] font-extrabold uppercase tracking-wider text-orange-400">Real-Time Cloud Sync</span>
+                <h3 class="text-lg font-black text-white">Squad & Firebase Setup</h3>
+              </div>
+              <button onclick="closeModal()" class="p-1.5 rounded-lg bg-zinc-850 text-zinc-400 hover:text-white">✕</button>
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-bold text-zinc-300 mb-1">Your Athlete Display Name</label>
+                <input id="setupAthleteName" type="text" value="${escapeHtml(appState.athleteName)}" placeholder="e.g., Adam"
+                  class="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-sm font-bold text-white" />
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-zinc-300 mb-1">Squad Room Code (Share with friends)</label>
+                <input id="setupSquadCode" type="text" value="${escapeHtml(appState.squadCode)}" placeholder="e.g., IRON-SQUAD"
+                  class="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-sm font-black uppercase text-amber-300" />
+                <p class="text-[11px] text-zinc-400 mt-1">Everyone using the same Squad Room Code appears on the same live leaderboard.</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-zinc-300 mb-1">
+                  Firebase Config Snippet
+                  <span class="text-orange-400 font-normal">(Paste raw JS or JSON from Firebase Console)</span>
+                </label>
+                <textarea id="setupFirebaseInput" rows="5" placeholder='const firebaseConfig = {\n  apiKey: "AIzaSy...",\n  authDomain: "your-app.firebaseapp.com",\n  projectId: "your-app",\n  appId: "1:123456:web:abc"\n};'
+                  class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 font-mono text-[11px] text-zinc-200">${escapeHtml(cfgPreview)}</textarea>
+              </div>
+
+              ${cloudState.error ? `<p class="text-xs text-rose-400 font-semibold bg-rose-950/40 border border-rose-500/30 rounded-xl p-2.5">${escapeHtml(cloudState.error)}</p>` : ''}
+            </div>
+
+            <div class="flex gap-2 pt-1">
+              <button onclick="closeModal()" class="flex-1 py-3 rounded-xl bg-zinc-850 text-xs font-bold text-zinc-300">Cancel</button>
+              <button onclick="saveAndConnectSquad()" class="flex-2 w-2/3 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 text-xs font-black shadow-lg">
+                Save & Connect Live
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function saveAndConnectSquad() {
+      const nameVal = (document.getElementById('setupAthleteName')?.value || '').trim();
+      const codeVal = (document.getElementById('setupSquadCode')?.value || '').trim().toUpperCase().replace(/[^A-Z0-9-_]/g, '');
+      const rawCfg = document.getElementById('setupFirebaseInput')?.value || '';
+
+      if (nameVal) appState.athleteName = nameVal;
+      if (codeVal) appState.squadCode = codeVal;
+
+      const parsedCfg = parseFirebaseConfigInput(rawCfg);
+      if (!parsedCfg) {
+        saveState(false);
+        showToast('Saved profile locally. Paste valid Firebase config to enable cloud sync.', 'amber');
+        closeModal();
+        renderApp();
+        return;
+      }
+
+      saveState(false);
+      closeModal();
+      const ok = await initFirebaseCloud(parsedCfg, false);
+      if (ok) {
+        renderApp();
+      }
+    }
+
+    function openMemberComparisonModal(memberId) {
+      const friend = cloudState.members.find(m => m.athleteId === memberId);
+      if (!friend) return;
+
+      const myXp = calculateTotalXP();
+      const myRank = getRankForXP(myXp).current;
+      const myWeeklyW = getWeeklyWorkouts().length;
+      const myWeeklyVol = getWeeklyVolume();
+      const myTotalVol = getTotalVolume();
+      const myPRs = Object.keys(computeAllPRs()).length;
+
+      const rows = [
+        { label: 'Total XP', me: myXp.toLocaleString(), them: (friend.xp || 0).toLocaleString(), meWins: myXp >= (friend.xp || 0) },
+        { label: 'Weekly Workouts', me: myWeeklyW, them: friend.weeklyWorkouts || 0, meWins: myWeeklyW >= (friend.weeklyWorkouts || 0) },
+        { label: 'Weekly Volume', me: `${(myWeeklyVol / 1000).toFixed(1)}t`, them: `${((friend.weeklyVolume || 0) / 1000).toFixed(1)}t`, meWins: myWeeklyVol >= (friend.weeklyVolume || 0) },
+        { label: 'Lifetime Volume', me: `${(myTotalVol / 1000).toFixed(1)}t`, them: `${((friend.totalVolume || 0) / 1000).toFixed(1)}t`, meWins: myTotalVol >= (friend.totalVolume || 0) },
+        { label: 'All-Time PRs', me: myPRs, them: friend.prCount || 0, meWins: myPRs >= (friend.prCount || 0) }
+      ];
+
+      document.getElementById('modalRoot').innerHTML = `
+        <div class="fixed inset-0 z-50 bg-zinc-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div class="w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-700 p-5 space-y-4 pop-in">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-extrabold uppercase tracking-wider text-orange-400">Head-to-Head Comparison</span>
+              <button onclick="closeModal()" class="p-1.5 rounded-lg bg-zinc-850 text-zinc-400 hover:text-white">✕</button>
+            </div>
+
+            <!-- VS Header -->
+            <div class="grid grid-cols-3 items-center text-center bg-zinc-950 border border-zinc-800 rounded-2xl p-3">
+              <div class="flex flex-col items-center">
+                ${renderAvatarBadge(appState.avatarId, 'w-12 h-12')}
+                <p class="text-xs font-black text-white mt-1.5 truncate max-w-[95px]">${escapeHtml(appState.athleteName)}</p>
+                <p class="text-[10px] text-orange-400 font-bold">${myRank.name}</p>
+              </div>
+              <div class="text-xs font-black text-zinc-500">VS</div>
+              <div class="flex flex-col items-center">
+                ${renderAvatarBadge(friend.avatarId || 'shiba', 'w-12 h-12')}
+                <p class="text-xs font-black text-white mt-1.5 truncate max-w-[95px]">${escapeHtml(friend.name)}</p>
+                <p class="text-[10px] text-amber-400 font-bold">${escapeHtml(friend.rankName || 'Iron Novice')}</p>
+              </div>
+            </div>
+
+            <!-- Stat Comparison Rows -->
+            <div class="space-y-2">
+              ${rows.map(r => `
+                <div class="grid grid-cols-3 items-center text-center py-2 px-3 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-xs">
+                  <span class="font-black ${r.meWins ? 'text-orange-400' : 'text-zinc-300'}">${r.me}</span>
+                  <span class="text-[11px] font-semibold text-zinc-400">${r.label}</span>
+                  <span class="font-black ${!r.meWins ? 'text-amber-400' : 'text-zinc-300'}">${r.them}</span>
+                </div>
+              `).join('')}
+            </div>
+
+            ${Array.isArray(friend.topLifts) && friend.topLifts.length > 0 ? `
+              <div>
+                <p class="text-[11px] font-extrabold uppercase text-zinc-400 mb-1.5">${escapeHtml(friend.name)}'s Top Lifts</p>
+                <div class="flex flex-wrap gap-1.5">
+                  ${friend.topLifts.map(l => `
+                    <span class="px-2.5 py-1 rounded-lg bg-zinc-950 border border-zinc-800 text-xs font-bold text-amber-300">
+                      ${escapeHtml(l.name)}: ${l.weight}kg × ${l.reps}
+                    </span>
+                  `).join('')}
+                </div>
+              </div>
+            ` : ''}
+
+            <button onclick="closeModal()" class="w-full py-3 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-xs font-extrabold text-white">
+              Close Comparison
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function openSettingsModal() {
+      const av = getAvatarObj(appState.avatarId);
+      document.getElementById('modalRoot').innerHTML = `
+        <div class="fixed inset-0 z-50 bg-zinc-950/90 backdrop-blur-sm flex items-center justify-center p-4">
+          <div class="w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-700 p-5 space-y-4 pop-in">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-black text-white">Athlete & Data Settings</h3>
+              <button onclick="closeModal()" class="p-1.5 rounded-lg bg-zinc-850 text-zinc-400 hover:text-white">✕</button>
+            </div>
+
+            <!-- Animal Avatar Selector Row -->
+            <div class="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800">
+              <div class="flex items-center gap-3">
+                ${renderAvatarBadge(appState.avatarId, 'w-12 h-12')}
+                <div>
+                  <p class="text-xs font-black text-white">${escapeHtml(av.name)}</p>
+                  <p class="text-[11px] text-zinc-400">Visible to your Squad</p>
+                </div>
+              </div>
+              <button onclick="openAvatarPickerModal()" class="px-3 py-1.5 rounded-xl bg-orange-500/20 border border-orange-500/40 text-xs font-extrabold text-orange-300">
+                Change Avatar
+              </button>
+            </div>
+
+            <div class="space-y-3">
+              <div>
+                <label class="block text-xs font-bold text-zinc-300 mb-1">Display Name</label>
+                <input id="settingsNameInp" type="text" value="${escapeHtml(appState.athleteName)}" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-bold text-white" />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-zinc-300 mb-1">Squad Room Code</label>
+                <input id="settingsSquadInp" type="text" value="${escapeHtml(appState.squadCode)}" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-black uppercase text-amber-300" />
+              </div>
+              <button onclick="saveBasicSettings()" class="w-full py-2.5 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 text-xs font-black">
+                Save Profile & Sync
+              </button>
+            </div>
+
+            <div class="pt-3 border-t border-zinc-800 space-y-2">
+              <button onclick="openSquadSetupModal()" class="w-full py-2.5 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-xs font-bold text-amber-300">
+                Configure Firebase Cloud Connection
+              </button>
+              <button onclick="resetToCleanSlate()" class="w-full py-2.5 rounded-xl bg-rose-950/50 border border-rose-500/30 text-xs font-bold text-rose-300 hover:bg-rose-950">
+                Reset Progress & Clear Sample Workouts
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function saveBasicSettings() {
+      const n = (document.getElementById('settingsNameInp')?.value || '').trim();
+      const s = (document.getElementById('settingsSquadInp')?.value || '').trim().toUpperCase().replace(/[^A-Z0-9-_]/g, '');
+      if (n) appState.athleteName = n;
+      if (s && s !== appState.squadCode) {
+        appState.squadCode = s;
+        if (cloudState.connected) attachSquadListeners();
+      }
+      saveState(true);
+      closeModal();
+      showToast('Profile saved!', 'orange');
+      renderApp();
+    }
+
+    function resetToCleanSlate() {
+      appState.workouts = [];
+      appState.bonusXp = 0;
+      appState.claimedQuests = [];
+      saveState(true);
+      closeModal();
+      showToast('Progress reset — ready for your first real workout!', 'amber');
+      renderApp();
+    }
+
+    function openCustomExerciseModal() {
+      document.getElementById('modalRoot').innerHTML = `
+        <div class="fixed inset-0 z-50 bg-zinc-950/90 flex items-center justify-center p-4">
+          <div class="w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-700 p-5 space-y-3 pop-in">
+            <div class="flex items-center justify-between">
+              <h3 class="text-base font-black text-white">Create Custom Exercise</h3>
+              <button onclick="closeModal()" class="text-zinc-400 hover:text-white">✕</button>
+            </div>
+            <input id="custExName" type="text" placeholder="Exercise Name (e.g., Belt Squat)" class="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-bold text-white" />
+            <div class="grid grid-cols-2 gap-2">
+              <select id="custExMuscle" class="px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-bold text-white">
+                <option>Chest</option><option>Back</option><option>Legs</option><option>Shoulders</option><option>Arms</option><option>Core</option>
+              </select>
+              <select id="custExEquip" class="px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-bold text-white">
+                <option>Machine</option><option>Barbell</option><option>Dumbbell</option><option>Cable</option><option>Bodyweight</option>
+              </select>
+            </div>
+            <input id="custExCue" type="text" placeholder="Form cue (optional)" class="w-full px-3 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 text-xs text-white" />
+            <button onclick="saveCustomExercise()" class="w-full py-3 rounded-xl bg-orange-500 text-zinc-950 text-xs font-black">Add to Library</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function saveCustomExercise() {
+      const name = (document.getElementById('custExName')?.value || '').trim();
+      if (!name) return;
+      appState.customExercises.push({
+        id: 'ex_custom_' + Date.now(),
+        name,
+        muscle: document.getElementById('custExMuscle').value,
+        equipment: document.getElementById('custExEquip').value,
+        cue: document.getElementById('custExCue').value.trim()
+      });
+      saveState(false);
+      closeModal();
+      showToast(`Added "${name}" to exercise library!`, 'orange');
+      renderApp();
+    }
+
+    function openEditSplitDayModal(splitId, dayId) {
+      const split = appState.splits.find(s => s.id === splitId);
+      const day = split && split.days.find(d => d.id === dayId);
+      if (!split || !day) return;
+
+      document.getElementById('modalRoot').innerHTML = `
+        <div class="fixed inset-0 z-50 bg-zinc-950/90 overflow-y-auto flex items-center justify-center p-4">
+          <div class="w-full max-w-md rounded-2xl bg-zinc-900 border border-zinc-700 p-5 space-y-3 pop-in">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-black text-white">Edit: ${escapeHtml(day.name)}</h3>
+              <button onclick="closeModal()" class="text-zinc-400 hover:text-white">✕</button>
+            </div>
+            <div class="space-y-2 max-h-72 overflow-y-auto">
+              ${day.exercises.map((item, idx) => `
+                <div class="flex items-center justify-between gap-2 p-2.5 rounded-xl bg-zinc-950 border border-zinc-800">
+                  <div class="min-w-0">
+                    <p class="text-xs font-bold text-white truncate">${escapeHtml(getExerciseById(item.exerciseId).name)}</p>
+                    <p class="text-[10px] text-zinc-400">${item.targetSets} sets × ${item.targetReps}</p>
+                  </div>
+                  <button onclick="removeExerciseFromDay('${splitId}', '${dayId}', ${idx})" class="px-2 py-1 rounded bg-rose-950 text-rose-300 text-[11px] font-bold">Remove</button>
+                </div>
+              `).join('')}
+            </div>
+            <div class="pt-2 border-t border-zinc-800 flex gap-2">
+              <select id="addExSelect" class="flex-1 px-2.5 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-xs font-bold text-white">
+                ${getAllExercises().map(e => `<option value="${e.id}">${escapeHtml(e.name)} (${e.muscle})</option>`).join('')}
+              </select>
+              <button onclick="addExerciseToDay('${splitId}', '${dayId}')" class="px-3 py-2 rounded-xl bg-orange-500 text-zinc-950 text-xs font-black">+ Add</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function removeExerciseFromDay(splitId, dayId, idx) {
+      const split = appState.splits.find(s => s.id === splitId);
+      const day = split && split.days.find(d => d.id === dayId);
+      if (!day) return;
+      day.exercises.splice(idx, 1);
+      saveState(false);
+      openEditSplitDayModal(splitId, dayId);
+      renderApp();
+    }
+
+    function addExerciseToDay(splitId, dayId) {
+      const split = appState.splits.find(s => s.id === splitId);
+      const day = split && split.days.find(d => d.id === dayId);
+      const exId = document.getElementById('addExSelect')?.value;
+      if (!day || !exId) return;
+      day.exercises.push({ exerciseId: exId, targetSets: 3, targetReps: '8-12', restSec: 90 });
+      saveState(false);
+      openEditSplitDayModal(splitId, dayId);
+      renderApp();
+    }
+
+    function openShareRankModal() {
+      const xp = calculateTotalXP();
+      const { current } = getRankForXP(xp);
+      const topLifts = getTopLiftsSummary();
+      const summaryText = `🏅 IRONPULSE ATHLETE CARD\nAthlete: ${appState.athleteName}\nRank: ${current.icon} ${current.name} (Tier ${current.tier})\nTotal XP: ${xp.toLocaleString()} XP\nLifetime Volume: ${(getTotalVolume() / 1000).toFixed(1)} tons\nSquad Room: ${appState.squadCode}`;
+
+      document.getElementById('modalRoot').innerHTML = `
+        <div class="fixed inset-0 z-50 bg-zinc-950/90 flex items-center justify-center p-4">
+          <div class="w-full max-w-sm rounded-3xl bg-gradient-to-br from-zinc-900 via-zinc-900 to-orange-950/40 border border-orange-500/40 p-6 text-center space-y-4 pop-in shadow-2xl">
+            <div class="flex justify-center">
+              ${renderAvatarBadge(appState.avatarId, 'w-20 h-20')}
+            </div>
+            <div>
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-orange-500/20 text-orange-300 border border-orange-500/40">${current.icon} Tier ${current.tier} Athlete</span>
+              <h3 class="text-2xl font-black text-white mt-1.5">${current.name}</h3>
+              <p class="text-xs font-bold text-zinc-400">${escapeHtml(appState.athleteName)} • ${xp.toLocaleString()} XP</p>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-left bg-zinc-950/80 border border-zinc-800 rounded-2xl p-3">
+              <div><p class="text-[10px] text-zinc-400">Workouts</p><p class="text-sm font-black text-white">${appState.workouts.length}</p></div>
+              <div><p class="text-[10px] text-zinc-400">Volume</p><p class="text-sm font-black text-amber-400">${(getTotalVolume()/1000).toFixed(1)}t</p></div>
+            </div>
+            ${topLifts.length > 0 ? `
+              <div class="space-y-1 text-left">
+                ${topLifts.map(l => `<div class="flex justify-between text-xs px-2"><span class="text-zinc-400">${escapeHtml(l.name)}</span><span class="font-black text-amber-300">${l.weight}kg × ${l.reps}</span></div>`).join('')}
+              </div>
+            ` : ''}
+            <div class="flex gap-2">
+              <button onclick="closeModal()" class="flex-1 py-2.5 rounded-xl bg-zinc-850 text-xs font-bold text-zinc-300">Close</button>
+              <button onclick='copyTextFallback(${JSON.stringify(summaryText)}, "Athlete Rank Card copied!")' class="flex-1 py-2.5 rounded-xl bg-orange-500 text-zinc-950 text-xs font-black">Copy Card</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function openRankUpModal(rankObj) {
+      document.getElementById('modalRoot').innerHTML = `
+        <div class="fixed inset-0 z-50 bg-zinc-950/90 flex items-center justify-center p-4">
+          <div class="w-full max-w-sm rounded-3xl bg-gradient-to-b from-zinc-900 to-zinc-950 border border-amber-400/60 p-6 text-center space-y-4 pop-in">
+            <p class="text-xs font-black uppercase tracking-widest text-amber-400">Rank Promotion!</p>
+            <div class="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br ${rankObj.gradient} flex items-center justify-center text-5xl shadow-2xl">
+              ${rankObj.icon}
+            </div>
+            <div>
+              <h3 class="text-2xl font-black text-white">${rankObj.name}</h3>
+              <p class="text-xs text-zinc-400 mt-1">Your promotion has been broadcast to Squad <span class="text-orange-400 font-bold">${escapeHtml(appState.squadCode)}</span>!</p>
+            </div>
+            <button onclick="closeModal()" class="w-full py-3 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 text-zinc-950 text-sm font-black">
+              Let's Keep Lifting!
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    function closeModal() {
+      document.getElementById('modalRoot').innerHTML = '';
+    }
+
+    /**
+     * ============================================================================
+     * 12. APP BOOTSTRAP
+     * ============================================================================
+     */
+    window.addEventListener('DOMContentLoaded', () => {
+      checkInviteUrlParam();
+      renderApp();
+      initFirebaseCloud(null, true);
+    });
+  </script>
+</body>
+</html>
